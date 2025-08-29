@@ -11,18 +11,20 @@ const readSettingsFile = () => {
       const defaultSettings = `# General Settings Configuration
 # Excel Column Mappings for Data Processing
 
-# Attendance Settings
-ATTENDANCE_NAME_COLUMN=A
+# Simplified Attendance Settings
+ATTENDANCE_NAME_COLUMN=F
 ATTENDANCE_PHONE_COLUMN=B
-ATTENDANCE_STATUS_COLUMN=C
-ATTENDANCE_DATE_COLUMN=D
+ATTENDANCE_EMPLOYEE_ID_COLUMN=D
+ATTENDANCE_IN_TIME_COLUMN=I
+ATTENDANCE_OUT_TIME_COLUMN=J
+ATTENDANCE_WORK_DURATION_COLUMN=M
 
 # Salary Settings
 SALARY_NAME_COLUMN=A
 SALARY_PHONE_COLUMN=B
 SALARY_AMOUNT_COLUMN=C
 
-# Templet Name 
+# Template Name 
 ATTENDANCE_TEMPLET_NAME=attedence
 SALARY_TEMPLET_NAME=salary
 `;
@@ -56,18 +58,20 @@ const writeSettingsFile = (settings) => {
     let content = `# General Settings Configuration
 # Excel Column Mappings for Data Processing
 
-# Attendance Settings
-ATTENDANCE_NAME_COLUMN=${settings.ATTENDANCE_NAME_COLUMN || 'A'}
+# Simplified Attendance Settings
+ATTENDANCE_NAME_COLUMN=${settings.ATTENDANCE_NAME_COLUMN || 'F'}
 ATTENDANCE_PHONE_COLUMN=${settings.ATTENDANCE_PHONE_COLUMN || 'B'}
-ATTENDANCE_STATUS_COLUMN=${settings.ATTENDANCE_STATUS_COLUMN || 'C'}
-ATTENDANCE_DATE_COLUMN=${settings.ATTENDANCE_DATE_COLUMN || 'D'}
+ATTENDANCE_EMPLOYEE_ID_COLUMN=${settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'D'}
+ATTENDANCE_IN_TIME_COLUMN=${settings.ATTENDANCE_IN_TIME_COLUMN || 'I'}
+ATTENDANCE_OUT_TIME_COLUMN=${settings.ATTENDANCE_OUT_TIME_COLUMN || 'J'}
+ATTENDANCE_WORK_DURATION_COLUMN=${settings.ATTENDANCE_WORK_DURATION_COLUMN || 'M'}
 
 # Salary Settings
 SALARY_NAME_COLUMN=${settings.SALARY_NAME_COLUMN || 'A'}
 SALARY_PHONE_COLUMN=${settings.SALARY_PHONE_COLUMN || 'B'}
 SALARY_AMOUNT_COLUMN=${settings.SALARY_AMOUNT_COLUMN || 'C'}
 
-# Templet Name 
+# Template Name 
 ATTENDANCE_TEMPLET_NAME=${settings.ATTENDANCE_TEMPLET_NAME || 'attedence'}
 SALARY_TEMPLET_NAME=${settings.SALARY_TEMPLET_NAME || 'salary'}
 
@@ -89,10 +93,12 @@ const getSettings = async (req, res) => {
     // Organize settings by category
     const organizedSettings = {
       attendance: {
-        nameColumn: settings.ATTENDANCE_NAME_COLUMN || 'A',
+        nameColumn: settings.ATTENDANCE_NAME_COLUMN || 'F',
         phoneColumn: settings.ATTENDANCE_PHONE_COLUMN || 'B',
-        statusColumn: settings.ATTENDANCE_STATUS_COLUMN || 'C',
-        dateColumn: settings.ATTENDANCE_DATE_COLUMN || 'D'
+        employeeIdColumn: settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'D',
+        inTimeColumn: settings.ATTENDANCE_IN_TIME_COLUMN || 'I',
+        outTimeColumn: settings.ATTENDANCE_OUT_TIME_COLUMN || 'J',
+        workDurationColumn: settings.ATTENDANCE_WORK_DURATION_COLUMN || 'M'
       },
       salary: {
         nameColumn: settings.SALARY_NAME_COLUMN || 'A',
@@ -140,8 +146,10 @@ const updateSettings = async (req, res) => {
     if (attendance) {
       if (attendance.nameColumn) updatedSettings.ATTENDANCE_NAME_COLUMN = attendance.nameColumn;
       if (attendance.phoneColumn) updatedSettings.ATTENDANCE_PHONE_COLUMN = attendance.phoneColumn;
-      if (attendance.statusColumn) updatedSettings.ATTENDANCE_STATUS_COLUMN = attendance.statusColumn;
-      if (attendance.dateColumn) updatedSettings.ATTENDANCE_DATE_COLUMN = attendance.dateColumn;
+      if (attendance.employeeIdColumn) updatedSettings.ATTENDANCE_EMPLOYEE_ID_COLUMN = attendance.employeeIdColumn;
+      if (attendance.inTimeColumn) updatedSettings.ATTENDANCE_IN_TIME_COLUMN = attendance.inTimeColumn;
+      if (attendance.outTimeColumn) updatedSettings.ATTENDANCE_OUT_TIME_COLUMN = attendance.outTimeColumn;
+      if (attendance.workDurationColumn) updatedSettings.ATTENDANCE_WORK_DURATION_COLUMN = attendance.workDurationColumn;
     }
 
     if (salary) {
@@ -175,8 +183,10 @@ const updateSettings = async (req, res) => {
         attendance: {
           nameColumn: updatedSettings.ATTENDANCE_NAME_COLUMN,
           phoneColumn: updatedSettings.ATTENDANCE_PHONE_COLUMN,
-          statusColumn: updatedSettings.ATTENDANCE_STATUS_COLUMN,
-          dateColumn: updatedSettings.ATTENDANCE_DATE_COLUMN
+          employeeIdColumn: updatedSettings.ATTENDANCE_EMPLOYEE_ID_COLUMN,
+          inTimeColumn: updatedSettings.ATTENDANCE_IN_TIME_COLUMN,
+          outTimeColumn: updatedSettings.ATTENDANCE_OUT_TIME_COLUMN,
+          workDurationColumn: updatedSettings.ATTENDANCE_WORK_DURATION_COLUMN
         },
         salary: {
           nameColumn: updatedSettings.SALARY_NAME_COLUMN,
@@ -207,15 +217,19 @@ const getAttendanceMapping = async (req, res) => {
     res.json({
       success: true,
       data: {
-        nameColumn: settings.ATTENDANCE_NAME_COLUMN || 'A',
+        nameColumn: settings.ATTENDANCE_NAME_COLUMN || 'F',
         phoneColumn: settings.ATTENDANCE_PHONE_COLUMN || 'B',
-        statusColumn: settings.ATTENDANCE_STATUS_COLUMN || 'C',
-        dateColumn: settings.ATTENDANCE_DATE_COLUMN || 'D',
+        employeeIdColumn: settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'D',
+        inTimeColumn: settings.ATTENDANCE_IN_TIME_COLUMN || 'I',
+        outTimeColumn: settings.ATTENDANCE_OUT_TIME_COLUMN || 'J',
+        workDurationColumn: settings.ATTENDANCE_WORK_DURATION_COLUMN || 'M',
         exampleMapping: {
-          A: 'Employee Name',
+          F: 'Employee Name',
           B: 'Phone Number',
-          C: 'Status (present/absent/half day)',
-          D: 'Date'
+          D: 'Employee ID',
+          I: 'In Time',
+          J: 'Out Time',
+          M: 'Work Duration'
         }
       }
     });

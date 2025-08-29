@@ -17,10 +17,12 @@ const SettingsPage = () => {
   
   const [settings, setSettings] = useState({
     attendance: {
-      nameColumn: 'A',
+      nameColumn: 'F',
       phoneColumn: 'B',
-      statusColumn: 'C',
-      dateColumn: 'D'
+      employeeIdColumn: 'D',
+      inTimeColumn: 'I',
+      outTimeColumn: 'J',
+      workDurationColumn: 'M'
     },
     salary: {
       nameColumn: 'A',
@@ -63,6 +65,7 @@ const SettingsPage = () => {
       if (data.success) {
         setSettings(data.data)
       } else {
+        console.log(data.message)
         setMessage({ type: "error", text: data.message || "Failed to fetch settings" })
       }
     } catch (error) {
@@ -111,10 +114,12 @@ const SettingsPage = () => {
   const resetToDefaults = () => {
     setSettings({
       attendance: {
-        nameColumn: 'A',
+        nameColumn: 'F',
         phoneColumn: 'B',
-        statusColumn: 'C',
-        dateColumn: 'D'
+        employeeIdColumn: 'D',
+        inTimeColumn: 'I',
+        outTimeColumn: 'J',
+        workDurationColumn: 'M'
       },
       salary: {
         nameColumn: 'A',
@@ -274,13 +279,23 @@ const SettingsPage = () => {
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-green-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Attendance Excel Mapping</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Enhanced Attendance Excel Mapping</h2>
           </div>
-          <p className="text-gray-600 mt-1">Configure which Excel columns contain attendance data</p>
+          <p className="text-gray-600 mt-1">Configure which Excel columns contain detailed attendance data</p>
+          
+          {/* Information about new format */}
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-sm font-semibold text-blue-800 mb-2">Simplified Enhanced Attendance Format</h3>
+            <div className="text-sm text-blue-700 space-y-1">
+              <p><strong>SMS Template:</strong> "प्रिय {'{'}name-employeeId{'}'} आज आपने {'{'}inTime-outTime{'}'} कार्य किया आपने कुल {'{'}workDuration{'}'}घंटे"</p>
+              <p><strong>Example:</strong> "प्रिय anish-Amc001 आज आपने 09:00-06:00 कार्य किया आपने कुल 08:00-घंटे"</p>
+              <p><strong>Required Columns:</strong> Name (F), Phone (B), Employee ID (D), In Time (I), Out Time (J), Work Duration (M)</p>
+            </div>
+          </div>
         </div>
         
         <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Employee Name Column
@@ -289,11 +304,11 @@ const SettingsPage = () => {
                 type="text"
                 value={settings.attendance.nameColumn}
                 onChange={(e) => handleInputChange('attendance', 'nameColumn', e.target.value.toUpperCase())}
-                placeholder="A"
+                placeholder="F"
                 maxLength="2"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="text-xs text-gray-500 mt-1">Example: A, B, C...</p>
+              <p className="text-xs text-gray-500 mt-1">Employee Name (F)</p>
             </div>
             
             <div>
@@ -308,37 +323,67 @@ const SettingsPage = () => {
                 maxLength="2"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="text-xs text-gray-500 mt-1">Example: A, B, C...</p>
+              <p className="text-xs text-gray-500 mt-1">Phone Number (B)</p>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Attendance Status Column
+                Employee ID Column
               </label>
               <input
                 type="text"
-                value={settings.attendance.statusColumn}
-                onChange={(e) => handleInputChange('attendance', 'statusColumn', e.target.value.toUpperCase())}
-                placeholder="C"
-                maxLength="2"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">present/absent/half day</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date Column
-              </label>
-              <input
-                type="text"
-                value={settings.attendance.dateColumn}
-                onChange={(e) => handleInputChange('attendance', 'dateColumn', e.target.value.toUpperCase())}
+                value={settings.attendance.employeeIdColumn}
+                onChange={(e) => handleInputChange('attendance', 'employeeIdColumn', e.target.value.toUpperCase())}
                 placeholder="D"
                 maxLength="2"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="text-xs text-gray-500 mt-1">Date of attendance</p>
+              <p className="text-xs text-gray-500 mt-1">Employee ID (D)</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                In Time Column
+              </label>
+              <input
+                type="text"
+                value={settings.attendance.inTimeColumn}
+                onChange={(e) => handleInputChange('attendance', 'inTimeColumn', e.target.value.toUpperCase())}
+                placeholder="I"
+                maxLength="2"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">In Time (I)</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Out Time Column
+              </label>
+              <input
+                type="text"
+                value={settings.attendance.outTimeColumn}
+                onChange={(e) => handleInputChange('attendance', 'outTimeColumn', e.target.value.toUpperCase())}
+                placeholder="J"
+                maxLength="2"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">Out Time (J)</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Work Duration Column
+              </label>
+              <input
+                type="text"
+                value={settings.attendance.workDurationColumn}
+                onChange={(e) => handleInputChange('attendance', 'workDurationColumn', e.target.value.toUpperCase())}
+                placeholder="M"
+                maxLength="2"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">Work Duration (M)</p>
             </div>
           </div>
         </div>

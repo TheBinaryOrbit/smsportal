@@ -43,7 +43,7 @@ const loginAdmin = async (req, res) => {
         role: admin.role 
       }, 
       JWT_SECRET, 
-      { expiresIn: '2h' }
+      { expiresIn: '7d' }
     );
 
     // Set HTTP-only cookie

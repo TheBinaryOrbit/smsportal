@@ -46,6 +46,75 @@ const sendDemoSMS = async (phoneNumber, templateId, variables) => {
   }
 };
 
+// Helper function to format time (extract HH:MM from time strings)
+const formatTime = (timeString) => {
+  if (!timeString) return '';
+  
+  // Extract time in format HH:MM from strings like "07:15:27" or "07:16:27(SE)()"
+  const timeMatch = timeString.toString().match(/(\d{2}):(\d{2})/);
+  if (timeMatch) {
+    return `${timeMatch[1]}:${timeMatch[2]}`;
+  }
+  return timeString.toString().substring(0, 5); // Fallback to first 5 characters
+};
+
+// Helper function to format work duration
+const formatWorkDuration = (durationString) => {
+  if (!durationString) return '';
+  
+  // Extract duration and add "घंटे" if not present
+  const duration = durationString.toString();
+  if (duration.includes('घंटे')) {
+    return duration;
+  }
+  return `${duration}-घंटे`;
+};
+
+// Helper function to calculate work duration from in-time and out-time
+const calculateWorkDuration = (inTimeStr, outTimeStr) => {
+  if (!inTimeStr || !outTimeStr) return '08:00';
+  
+  try {
+    // Parse time strings (assuming format like "09:00", "17:30", "07:15:27", etc.)
+    const parseTime = (timeStr) => {
+      const timeMatch = timeStr.toString().match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        return {
+          hours: parseInt(timeMatch[1]),
+          minutes: parseInt(timeMatch[2])
+        };
+      }
+      return { hours: 0, minutes: 0 };
+    };
+    
+    const inTime = parseTime(inTimeStr);
+    const outTime = parseTime(outTimeStr);
+    
+    // Convert to minutes for easier calculation
+    const inTimeMinutes = inTime.hours * 60 + inTime.minutes;
+    let outTimeMinutes = outTime.hours * 60 + outTime.minutes;
+    
+    // Handle next day scenario (if out time is earlier than in time)
+    if (outTimeMinutes < inTimeMinutes) {
+      outTimeMinutes += 24 * 60; // Add 24 hours
+    }
+    
+    // Calculate difference in minutes
+    const diffMinutes = outTimeMinutes - inTimeMinutes;
+    
+    // Convert back to hours and minutes
+    const workHours = Math.floor(diffMinutes / 60);
+    const workMinutes = diffMinutes % 60;
+    
+    // Format as HH:MM
+    return `${workHours.toString().padStart(2, '0')}:${workMinutes.toString().padStart(2, '0')}`;
+    
+  } catch (error) {
+    console.error('Error calculating work duration:', error);
+    return '08:00'; // Default fallback
+  }
+};
+
 // Simple SMS processing without Redis queue
 const processDirectSMS = async (type, data, isRetry = false) => {
   const startTime = Date.now();
@@ -54,11 +123,20 @@ const processDirectSMS = async (type, data, isRetry = false) => {
     let result;
     
     if (type === 'attendance') {
-      const variables = `${data.name}|${data.date}|${data.status}`;
+      console.log(data);
+      // Create the enhanced attendance message format
+      const nameWithId = `${data.name}-${data.employeeId}`;
+      const inTime = formatTime(data.inTime);
+      const outTime = formatTime(data.outTime);
+      const workTime = `${inTime}-${outTime}`;
+      const workDuration = formatWorkDuration(data.workDuration);
+      
+      const variables = `${nameWithId}|${workTime}|${workDuration}`;
+      
       // Use demo or real API based on configuration
       result = isDemoMode ? 
-        await sendDemoSMS(data.phone, '195559', variables) :
-        await sendSMS(data.phone, '195559', variables);
+        await sendDemoSMS(data.phone, '197287', variables) :
+        await sendSMS(data.phone, '197287', variables);
     } else if (type === 'salary') {
       const variables = `${data.name}|${data.amount}`;
       // Use demo or real API based on configuration
@@ -77,7 +155,12 @@ const processDirectSMS = async (type, data, isRetry = false) => {
           name: data.name,
           phone: data.phone,
           data: type === 'attendance' ? 
-            { date: data.date, status: data.status } : 
+            { 
+              employeeId: data.employeeId,
+              inTime: data.inTime,
+              outTime: data.outTime,
+              workDuration: data.workDuration
+            } : 
             { amount: data.amount },
           status: 'completed',
           completedAt: new Date(),
@@ -156,7 +239,12 @@ const processDirectSMS = async (type, data, isRetry = false) => {
         name: data.name,
         phone: data.phone,
         data: type === 'attendance' ? 
-          { date: data.date, status: data.status } : 
+          { 
+            employeeId: data.employeeId,
+            inTime: data.inTime,
+            outTime: data.outTime,
+            workDuration: data.workDuration
+          } : 
           { amount: data.amount },
         error: error.message,
         finalFailureAt: new Date(),
@@ -206,6 +294,7 @@ const processDirectSMS = async (type, data, isRetry = false) => {
 // SMS API function
 const sendSMS = async (phoneNumber, templateId, variables) => {
   try {
+    console.log(phoneNumber , templateId, variables)
     const apiUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${process.env.WALLET_API_URL}&route=dlt&sender_id=SHUSON&message=${templateId}&variables_values=${variables}&flash=0&numbers=${phoneNumber}`;
     
     const response = await axios.get(apiUrl);
@@ -314,12 +403,13 @@ const uploadAttendanceExcel = async (req, res) => {
 
     const settings = readSettingsFile();
     
-    // Column mapping from settings
+    // Column mapping from settings - Simplified attendance format (work duration calculated)
     const columnMapping = {
-      name: settings.ATTENDANCE_NAME_COLUMN || 'A',
+      name: settings.ATTENDANCE_NAME_COLUMN || 'F',
       phone: settings.ATTENDANCE_PHONE_COLUMN || 'B',
-      status: settings.ATTENDANCE_STATUS_COLUMN || 'C',
-      date: settings.ATTENDANCE_DATE_COLUMN || 'D'
+      employeeId: settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'D',
+      inTime: settings.ATTENDANCE_IN_TIME_COLUMN || 'I',
+      outTime: settings.ATTENDANCE_OUT_TIME_COLUMN || 'J'
     };
     
     // Read and extract data from Excel
@@ -339,9 +429,9 @@ const uploadAttendanceExcel = async (req, res) => {
     for (let i = 0; i < extractedData.length; i++) {
       const row = extractedData[i];
       
-      // Validate required fields
-      if (!row.name || !row.phone || !row.status || !row.date) {
-        errors.push(`Row ${i + 2}: Missing required fields`);
+      // Validate required fields - Updated for new format
+      if (!row.name || !row.phone || !row.employeeId) {
+        errors.push(`Row ${i + 2}: Missing required fields (name, phone, employeeId)`);
         continue;
       }
       
@@ -352,11 +442,24 @@ const uploadAttendanceExcel = async (req, res) => {
         continue;
       }
       
+      // Validate that in-time and out-time are present for work duration calculation
+      if (!row.inTime || !row.outTime) {
+        errors.push(`Row ${i + 2}: Missing in-time or out-time`);
+        continue;
+      }
+
+      console.log(row);
+      
+      // Calculate work duration from in-time and out-time
+      const calculatedWorkDuration = calculateWorkDuration(row.inTime, row.outTime);
+      
       processedData.push({
         name: row.name.toString().trim(),
         phone: row.phone.toString().trim(),
-        status: row.status.toString().trim(),
-        date: row.date.toString().trim()
+        employeeId: row.employeeId.toString().trim(),
+        inTime: row.inTime.toString().trim(),
+        outTime: row.outTime.toString().trim(),
+        workDuration: calculatedWorkDuration
       });
     }
     
@@ -371,8 +474,10 @@ const uploadAttendanceExcel = async (req, res) => {
         name: data.name,
         phone: data.phone,
         data: {
-          date: data.date,
-          status: data.status
+          employeeId: data.employeeId,
+          inTime: data.inTime,
+          outTime: data.outTime,
+          workDuration: data.workDuration
         },
         status: 'pending',
         createdAt: new Date()
@@ -386,8 +491,10 @@ const uploadAttendanceExcel = async (req, res) => {
           queueId: queueEntry._id,
           name: data.name,
           phone: data.phone,
-          date: data.date,
-          status: data.status
+          employeeId: data.employeeId,
+          inTime: data.inTime,
+          outTime: data.outTime,
+          workDuration: data.workDuration
         })
       );
     }
