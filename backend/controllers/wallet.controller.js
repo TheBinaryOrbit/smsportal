@@ -11,21 +11,18 @@ const getWalletBalance = async (req, res) => {
       }
     });
 
-    // console.log('Wallet balance response:', balanceResponse.data);
+    console.log('Wallet balance response:', balanceResponse.data);
 
     // Extract balance from response (assuming the API returns { balance: 100 })
     const balance = balanceResponse.data.wallet || 0;
 
-    // Calculate SMS count (balance / 0.20)
-    const smsCount = Math.floor(+balance / 0.20);
-
-    console.log('Calculated SMS count:', smsCount);
+    console.log('Calculated SMS count:', balanceResponse.data.sms_count);
 
     res.json({
       success: true,
       data: {
         balance: balance,
-        smsCount: smsCount,
+        smsCount: balanceResponse.data.sms_count,
         pricePerSms: 0.20,
         currency: 'INR',
       }

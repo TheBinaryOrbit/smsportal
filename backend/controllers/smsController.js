@@ -46,6 +46,52 @@ const sendDemoSMS = async (phoneNumber, templateId, variables) => {
   }
 };
 
+// Helper function to get Hindi month names
+const getHindiMonth = (monthNumber, daysWorked) => {
+  const hindiMonths = {
+    1: 'जनवरी',
+    2: 'फ़रवरी', 
+    3: 'मार्च',
+    4: 'अप्रैल',
+    5: 'मई',
+    6: 'जून',
+    7: 'जुलाई',
+    8: 'अगस्त',
+    9: 'सितंबर',
+    10: 'अक्टूबर',
+    11: 'नवंबर',
+    12: 'दिसंबर'
+  };
+  
+  // If monthNumber is provided, use it; otherwise use current month
+  let month;
+  if (monthNumber && monthNumber >= 1 && monthNumber <= 12) {
+    month = monthNumber;
+  } else {
+    month = new Date().getMonth() + 1;
+  }
+  
+  // If daysWorked is provided, use it; otherwise calculate days in month
+  let days;
+  if (daysWorked) {
+    days = daysWorked;
+  } else {
+    const currentYear = new Date().getFullYear();
+    days = new Date(currentYear, month, 0).getDate();
+  }
+  
+  return `${hindiMonths[month]}-${days}-दिन`;
+};
+
+// Helper function to calculate net salary
+const calculateNetSalary = (grossSalary, pf, esi) => {
+  const gross = parseFloat(grossSalary) || 0;
+  const pfAmount = parseFloat(pf) || 0;
+  const esiAmount = parseFloat(esi) || 0;
+  const netPay = gross - (pfAmount + esiAmount);
+  return `${gross}-(${pfAmount}+${esiAmount}) = ${netPay.toFixed(2)}`;
+};
+
 // Helper function to format time (extract HH:MM from time strings)
 const formatTime = (timeString) => {
   if (!timeString) return '';
@@ -118,6 +164,7 @@ const calculateWorkDuration = (inTimeStr, outTimeStr) => {
 // Simple SMS processing without Redis queue
 const processDirectSMS = async (type, data, isRetry = false) => {
   const startTime = Date.now();
+  const setting = readSettingsFile();
   
   try {
     let result;
@@ -135,14 +182,20 @@ const processDirectSMS = async (type, data, isRetry = false) => {
       
       // Use demo or real API based on configuration
       result = isDemoMode ? 
-        await sendDemoSMS(data.phone, '197287', variables) :
-        await sendSMS(data.phone, '197287', variables);
+        await sendDemoSMS(data.phone, setting.ATTENDANCE_TEMPLET_ID, variables) :
+        await sendSMS(data.phone, setting.ATTENDANCE_TEMPLET_ID, variables);
     } else if (type === 'salary') {
-      const variables = `${data.name}|${data.amount}`;
+      // Create the enhanced salary message format
+      const nameWithId = `${data.name}-${data.employeeId}`;
+      const monthDays = getHindiMonth(data.selectedMonth, data.days);
+      const salaryCalculation = calculateNetSalary(data.grossSalary, data.pf, data.esi);
+      
+      const variables = `${nameWithId}|${monthDays}|${salaryCalculation}`;
+      
       // Use demo or real API based on configuration
       result = isDemoMode ? 
-        await sendDemoSMS(data.phone, '195560', variables) :
-        await sendSMS(data.phone, '195560', variables);
+        await sendDemoSMS(data.phone, setting.SALARY_TEMPLET_ID, variables) :
+        await sendSMS(data.phone, setting.SALARY_TEMPLET_ID, variables);
     }
     
     const processingTime = Date.now() - startTime;
@@ -161,7 +214,15 @@ const processDirectSMS = async (type, data, isRetry = false) => {
               outTime: data.outTime,
               workDuration: data.workDuration
             } : 
-            { amount: data.amount },
+            { 
+              employeeId: data.employeeId,
+              grossSalary: data.grossSalary,
+              pf: data.pf,
+              esi: data.esi,
+              netPay: data.netPay,
+              days: data.days,
+              selectedMonth: data.selectedMonth
+            },
           status: 'completed',
           completedAt: new Date(),
           response: result.data,
@@ -245,7 +306,15 @@ const processDirectSMS = async (type, data, isRetry = false) => {
             outTime: data.outTime,
             workDuration: data.workDuration
           } : 
-          { amount: data.amount },
+          { 
+            employeeId: data.employeeId,
+            grossSalary: data.grossSalary,
+            pf: data.pf,
+            esi: data.esi,
+            netPay: data.netPay,
+            days: data.days,
+            selectedMonth: data.selectedMonth
+          },
         error: error.message,
         finalFailureAt: new Date(),
         retryCount: 0,
@@ -586,17 +655,26 @@ const uploadSalaryExcel = async (req, res) => {
       });
     }
 
+    // Get selected month from request body (1-12)
+    const selectedMonth = req.body.selectedMonth ? parseInt(req.body.selectedMonth) : new Date().getMonth() + 1;
+    
     console.log(`Starting salary batch processing: ${batchId}`);
+    console.log(`Selected month: ${selectedMonth}`);
     console.log(`Demo mode: ${isDemoMode ? 'ENABLED' : 'DISABLED'}`);
     console.log(`Logging: ${enableLogging ? 'ENABLED' : 'DISABLED'}`);
 
     const settings = readSettingsFile();
     
-    // Column mapping from settings
+    // Column mapping from settings for enhanced salary
     const columnMapping = {
       name: settings.SALARY_NAME_COLUMN || 'A',
       phone: settings.SALARY_PHONE_COLUMN || 'B',
-      amount: settings.SALARY_AMOUNT_COLUMN || 'C'
+      employeeId: settings.SALARY_EMPLOYEE_ID_COLUMN || 'C',
+      grossSalary: settings.SALARY_GROSS_SALARY_COLUMN || 'D',
+      pf: settings.SALARY_PF_COLUMN || 'E',
+      esi: settings.SALARY_ESI_COLUMN || 'F',
+      netPay: settings.SALARY_NETPAY_COLUMN || 'G',
+      days: settings.SALARY_DAYS_COLUMN || 'H'
     };
     
     // Read and extract data from Excel
@@ -616,9 +694,9 @@ const uploadSalaryExcel = async (req, res) => {
     for (let i = 0; i < extractedData.length; i++) {
       const row = extractedData[i];
       
-      // Validate required fields
-      if (!row.name || !row.phone || !row.amount) {
-        errors.push(`Row ${i + 2}: Missing required fields`);
+      // Validate required fields - Updated for enhanced salary format
+      if (!row.name || !row.phone || !row.employeeId || !row.grossSalary) {
+        errors.push(`Row ${i + 2}: Missing required fields (name, phone, employeeId, grossSalary)`);
         continue;
       }
       
@@ -629,16 +707,35 @@ const uploadSalaryExcel = async (req, res) => {
         continue;
       }
       
-      // Validate amount (should be numeric)
-      if (isNaN(row.amount) || parseFloat(row.amount) <= 0) {
-        errors.push(`Row ${i + 2}: Invalid amount format`);
+      // Validate gross salary (should be numeric)
+      if (isNaN(row.grossSalary) || parseFloat(row.grossSalary) <= 0) {
+        errors.push(`Row ${i + 2}: Invalid gross salary format`);
+        continue;
+      }
+      
+      // Validate PF and ESI (should be numeric if provided)
+      const pf = row.pf ? parseFloat(row.pf) : 0;
+      const esi = row.esi ? parseFloat(row.esi) : 0;
+      
+      if (row.pf && isNaN(pf)) {
+        errors.push(`Row ${i + 2}: Invalid PF amount format`);
+        continue;
+      }
+      
+      if (row.esi && isNaN(esi)) {
+        errors.push(`Row ${i + 2}: Invalid ESI amount format`);
         continue;
       }
       
       processedData.push({
         name: row.name.toString().trim(),
         phone: row.phone.toString().trim(),
-        amount: parseFloat(row.amount).toFixed(2)
+        employeeId: row.employeeId.toString().trim(),
+        grossSalary: parseFloat(row.grossSalary).toFixed(2),
+        pf: pf.toFixed(2),
+        esi: esi.toFixed(2),
+        netPay: row.netPay ? parseFloat(row.netPay).toFixed(2) : (parseFloat(row.grossSalary) - pf - esi).toFixed(2),
+        days: row.days ? row.days.toString().trim() : '31'
       });
     }
     
@@ -653,7 +750,13 @@ const uploadSalaryExcel = async (req, res) => {
         name: data.name,
         phone: data.phone,
         data: {
-          amount: data.amount
+          employeeId: data.employeeId,
+          grossSalary: data.grossSalary,
+          pf: data.pf,
+          esi: data.esi,
+          netPay: data.netPay,
+          days: data.days,
+          selectedMonth: selectedMonth
         },
         status: 'pending',
         createdAt: new Date()
@@ -667,7 +770,13 @@ const uploadSalaryExcel = async (req, res) => {
           queueId: queueEntry._id,
           name: data.name,
           phone: data.phone,
-          amount: data.amount
+          employeeId: data.employeeId,
+          grossSalary: data.grossSalary,
+          pf: data.pf,
+          esi: data.esi,
+          netPay: data.netPay,
+          days: data.days,
+          selectedMonth: selectedMonth
         })
       );
     }
@@ -858,8 +967,21 @@ const retryFailedSMS = async (req, res) => {
       phone: failedRecord.phone,
       originalSMSQueueData: failedRecord, // Pass the failed record for cleanup
       ...(failedRecord.type === 'attendance' ? 
-        { date: failedRecord.data.date, status: failedRecord.data.status } :
-        { amount: failedRecord.data.amount })
+        { 
+          employeeId: failedRecord.data.employeeId,
+          inTime: failedRecord.data.inTime,
+          outTime: failedRecord.data.outTime,
+          workDuration: failedRecord.data.workDuration
+        } :
+        { 
+          employeeId: failedRecord.data.employeeId,
+          grossSalary: failedRecord.data.grossSalary,
+          pf: failedRecord.data.pf,
+          esi: failedRecord.data.esi,
+          netPay: failedRecord.data.netPay,
+          days: failedRecord.data.days,
+          selectedMonth: failedRecord.data.selectedMonth || new Date().getMonth() + 1
+        })
     }, true); // isRetry = true
     
     res.json({

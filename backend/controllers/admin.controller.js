@@ -293,6 +293,92 @@ const getAllAdmins = async (req, res) => {
   }
 };
 
+// Get system statistics
+const getSystemStats = async (req, res) => {
+  try {
+    const SMSQueue = require('../models/SMSQueue');
+    const FailedSMS = require('../models/FailedSMS');
+    const Admin = require('../models/admin.model');
+
+    // Get counts from different collections
+    const [queueEntries, failedSMS, totalUsers] = await Promise.all([
+      SMSQueue.countDocuments(),
+      FailedSMS.countDocuments(),
+      Admin.countDocuments()
+    ]);
+
+    const totalSMSRecords = queueEntries + failedSMS;
+
+    res.json({
+      success: true,
+      data: {
+        totalSMSRecords,
+        totalQueueEntries: queueEntries,
+        totalFailedSMS: failedSMS,
+        totalUsers
+      }
+    });
+
+  } catch (error) {
+    console.error('Get system stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch system statistics'
+    });
+  }
+};
+
+// Reset system data
+const resetSystem = async (req, res) => {
+  try {
+    const { resetType } = req.body;
+    const SMSQueue = require('../models/SMSQueue');
+    const FailedSMS = require('../models/FailedSMS');
+    const Admin = require('../models/admin.model');
+
+    if (resetType === 'sms_data') {
+      // Clear only SMS data
+      await Promise.all([
+        SMSQueue.deleteMany({}),
+        FailedSMS.deleteMany({})
+      ]);
+
+      res.json({
+        success: true,
+        message: 'SMS data cleared successfully'
+      });
+
+    } else if (resetType === 'all_data') {
+      // Clear all data except current super admin
+      const currentAdminId = req.admin.id;
+      
+      await Promise.all([
+        SMSQueue.deleteMany({}),
+        FailedSMS.deleteMany({}),
+        Admin.deleteMany({ _id: { $ne: currentAdminId } })
+      ]);
+
+      res.json({
+        success: true,
+        message: 'All system data cleared successfully'
+      });
+
+    } else {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid reset type'
+      });
+    }
+
+  } catch (error) {
+    console.error('Reset system error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset system'
+    });
+  }
+};
+
 module.exports = {
   loginAdmin,
   logoutAdmin,
@@ -300,5 +386,7 @@ module.exports = {
   deleteAdmin,
   updatePassword,
   checkSession,
-  getAllAdmins
+  getAllAdmins,
+  getSystemStats,
+  resetSystem
 };

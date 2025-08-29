@@ -7,14 +7,14 @@ const SettingsPage = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState({ type: "", text: "" })
-  
+
   // System reset states
   const [systemStats, setSystemStats] = useState(null)
   const [statsLoading, setStatsLoading] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [resetType, setResetType] = useState('sms_data')
-  
+
   const [settings, setSettings] = useState({
     attendance: {
       nameColumn: 'F',
@@ -27,7 +27,12 @@ const SettingsPage = () => {
     salary: {
       nameColumn: 'A',
       phoneColumn: 'B',
-      amountColumn: 'C'
+      employeeIdColumn: 'C',
+      grossSalaryColumn: 'D',
+      pfColumn: 'E',
+      esiColumn: 'F',
+      netPayColumn: 'G',
+      daysColumn: 'H'
     },
     templateNames: {
       attendanceTempletName: 'attedence',
@@ -35,21 +40,20 @@ const SettingsPage = () => {
     }
   })
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  const API_BASE_URL = import.meta.env.DEV
+    ? 'http://localhost:5000/api'
+    : '/api'
 
-  // Redirect if not super admin
-  if (!isSuperAdmin) {
-    return (
-      <div className="p-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
-          <p className="text-gray-600">You need super admin privileges to access settings.</p>
-        </div>
-      </div>
-    )
-  }
+  // Clear message after 3 seconds
+  useEffect(() => {
+    if (message.text) {
+      const timer = setTimeout(() => {
+        setMessage({ type: "", text: "" })
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [message])
 
-  // Fetch settings
   const fetchSettings = async () => {
     try {
       setLoading(true)
@@ -62,30 +66,35 @@ const SettingsPage = () => {
       })
 
       const data = await response.json()
+
       if (data.success) {
         setSettings(data.data)
       } else {
-        console.log(data.message)
         setMessage({ type: "error", text: data.message || "Failed to fetch settings" })
       }
+
     } catch (error) {
       console.error('Fetch settings error:', error)
-      setMessage({ type: "error", text: "Network error while fetching settings" })
+      setMessage({ type: "error", text: "Network error occurred" })
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(()=>{
-    console.log(settings)
-  }, [settings])
+  const handleInputChange = (section, field, value) => {
+    setSettings(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: value
+      }
+    }))
+  }
 
-  // Save settings
-  const saveSettings = async () => {
+  const handleSave = async () => {
+    setSaving(true)
+    setMessage({ type: "", text: "" })
     try {
-      setSaving(true)
-      setMessage({ type: "", text: "" })
-
       const response = await fetch(`${API_BASE_URL}/settings`, {
         method: 'PUT',
         credentials: 'include',
@@ -96,22 +105,22 @@ const SettingsPage = () => {
       })
 
       const data = await response.json()
+
       if (data.success) {
-        setMessage({ type: "success", text: "Settings updated successfully!" })
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000)
+        setMessage({ type: "success", text: "Settings saved successfully!" })
       } else {
-        setMessage({ type: "error", text: data.message || "Failed to update settings" })
+        setMessage({ type: "error", text: data.message || "Failed to save settings" })
       }
+
     } catch (error) {
       console.error('Save settings error:', error)
-      setMessage({ type: "error", text: "Network error while saving settings" })
+      setMessage({ type: "error", text: "Network error occurred" })
     } finally {
       setSaving(false)
     }
   }
 
-  // Reset to defaults
-  const resetToDefaults = () => {
+  const handleReset = () => {
     setSettings({
       attendance: {
         nameColumn: 'F',
@@ -124,7 +133,12 @@ const SettingsPage = () => {
       salary: {
         nameColumn: 'A',
         phoneColumn: 'B',
-        amountColumn: 'C'
+        employeeIdColumn: 'C',
+        grossSalaryColumn: 'D',
+        pfColumn: 'E',
+        esiColumn: 'F',
+        netPayColumn: 'G',
+        daysColumn: 'H'
       },
       templateNames: {
         attendanceTempletName: 'attedence',
@@ -134,591 +148,557 @@ const SettingsPage = () => {
     setMessage({ type: "info", text: "Settings reset to defaults" })
   }
 
-  // Fetch system statistics
+  // Load settings on mount
+  useEffect(() => {
+    fetchSettings()
+  }, [])
+
   const fetchSystemStats = async () => {
     setStatsLoading(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/sms/system/stats`, {
-        credentials: 'include'
+      const response = await fetch(`${API_BASE_URL}/admin/system-stats`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
-      const result = await response.json()
-      
-      if (result.success) {
-        setSystemStats(result.data)
+
+      const data = await response.json()
+
+      if (data.success) {
+        setSystemStats(data.data)
       } else {
-        console.error('Failed to fetch system stats:', result.message)
+        setMessage({ type: "error", text: data.message || "Failed to fetch system stats" })
       }
+
     } catch (error) {
-      console.error('Error fetching system stats:', error)
+      console.error('Fetch system stats error:', error)
+      setMessage({ type: "error", text: "Network error occurred" })
     } finally {
       setStatsLoading(false)
     }
   }
 
-  // Reset system data
-  const performSystemReset = async () => {
+  const handleSystemReset = async () => {
     setResetLoading(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/sms/system/reset`, {
+      const response = await fetch(`${API_BASE_URL}/admin/reset-system`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
-        body: JSON.stringify({
-          confirmReset: true,
-          resetType: resetType
-        })
+        body: JSON.stringify({ resetType })
       })
-      
-      const result = await response.json()
-      
-      if (result.success) {
-        setMessage({ 
-          type: "success", 
-          text: `System reset completed! ${result.data.clearedItems.join(', ')}` 
-        })
-        setShowResetConfirm(false)
-        // Refresh stats after reset
-        await fetchSystemStats()
+
+      const data = await response.json()
+
+      if (data.success) {
+        setMessage({ type: "success", text: `${resetType === 'sms_data' ? 'SMS data' : 'All data'} cleared successfully!` })
+        setSystemStats(null) // Reset stats to force refresh
       } else {
-        setMessage({ type: "error", text: result.message || "Failed to reset system" })
+        setMessage({ type: "error", text: data.message || "Failed to reset system" })
       }
+
     } catch (error) {
       console.error('System reset error:', error)
-      setMessage({ type: "error", text: "Network error while resetting system" })
+      setMessage({ type: "error", text: "Network error occurred" })
     } finally {
       setResetLoading(false)
+      setShowResetConfirm(false)
     }
   }
 
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleDateString() + ' ' + new Date(dateString).toLocaleTimeString()
-  }
-
+  // Auto-fetch system stats when the system reset section is visible
   useEffect(() => {
-    fetchSettings()
-    fetchSystemStats()
-  }, [])
-
-  const handleInputChange = (category, field, value) => {
-    setSettings(prev => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        [field]: value
-      }
-    }))
-  }
+    if (isSuperAdmin && !systemStats) {
+      fetchSystemStats()
+    }
+  }, [isSuperAdmin])
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center min-h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <span className="ml-4 text-gray-600">Loading settings...</span>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading settings...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
-            <Settings className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <Settings className="h-8 w-8 text-blue-600" />
+            System Settings
+          </h1>
+          <p className="mt-2 text-gray-600">
+            Configure column mappings and system parameters
+          </p>
+        </div>
+
+        {/* Status Messages */}
+        {message.text && (
+          <div className={`mb-6 p-4 rounded-md ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
+              message.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' :
+                'bg-blue-50 text-blue-700 border border-blue-200'
+            }`}>
+            {message.text}
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">General Settings</h1>
-            <p className="text-gray-600">Configure Excel column mappings and default values</p>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Attendance Settings Card */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+                Attendance Column Mapping
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Configure Excel column mappings for attendance data (Simplified - 5 columns)
+              </p>
+            </div>
+
+            <div className="p-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h3 className="font-medium text-blue-900 mb-2">📋 Attendance Structure (5 Columns)</h3>
+                <div className="text-sm text-blue-800 space-y-1">
+                  <div>✅ <strong>Name:</strong> Employee name</div>
+                  <div>✅ <strong>Phone:</strong> Phone number</div>
+                  <div>✅ <strong>Employee ID:</strong> Unique identifier</div>
+                  <div>✅ <strong>In Time:</strong> Clock in time</div>
+                  <div>✅ <strong>Out Time:</strong> Clock out time</div>
+                  <div className="mt-2 text-blue-700">
+                    <strong>⚡ Auto-calculated:</strong> Work duration (no column needed)
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Name Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.attendance.nameColumn}
+                    onChange={(e) => handleInputChange('attendance', 'nameColumn', e.target.value.toUpperCase())}
+                    placeholder="F"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Employee Name</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.attendance.phoneColumn}
+                    onChange={(e) => handleInputChange('attendance', 'phoneColumn', e.target.value.toUpperCase())}
+                    placeholder="B"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Phone Number</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Employee ID Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.attendance.employeeIdColumn}
+                    onChange={(e) => handleInputChange('attendance', 'employeeIdColumn', e.target.value.toUpperCase())}
+                    placeholder="D"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Employee ID</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    In Time Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.attendance.inTimeColumn}
+                    onChange={(e) => handleInputChange('attendance', 'inTimeColumn', e.target.value.toUpperCase())}
+                    placeholder="I"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">In Tim</p>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Out Time Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.attendance.outTimeColumn}
+                    onChange={(e) => handleInputChange('attendance', 'outTimeColumn', e.target.value.toUpperCase())}
+                    placeholder="J"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Out Time</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Enhanced Salary Settings Card */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-green-600" />
+                Salary Column Mapping
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Configure Excel column mappings for salary data with PF/ESI breakdown (8 columns)
+              </p>
+            </div>
+
+            <div className="p-6">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <h3 className="font-medium text-green-900 mb-2">💰 Salary Structure (8 Columns)</h3>
+                <div className="text-sm text-green-800 space-y-1">
+                  <div>✅ <strong>Name:</strong> Employee name</div>
+                  <div>✅ <strong>Phone:</strong> Phone number</div>
+                  <div>✅ <strong>Employee ID:</strong> Unique identifier</div>
+                  <div>✅ <strong>Gross Salary:</strong> Total salary amount</div>
+                  <div>✅ <strong>PF Deduction:</strong> Provident Fund amount</div>
+                  <div>✅ <strong>ESI Deduction:</strong> Employee State Insurance</div>
+                  <div>✅ <strong>Net Pay:</strong> Final amount after deductions</div>
+                  <div>✅ <strong>Days:</strong> Working days (e.g., 31)</div>
+                  <div className="mt-2 text-green-700">
+                    <strong>📱 SMS Features:</strong> Hindi month names, month selection, detailed breakdown
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Name Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.salary.nameColumn}
+                    onChange={(e) => handleInputChange('salary', 'nameColumn', e.target.value.toUpperCase())}
+                    placeholder="A"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Employee Name</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.salary.phoneColumn}
+                    onChange={(e) => handleInputChange('salary', 'phoneColumn', e.target.value.toUpperCase())}
+                    placeholder="B"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Phone Number</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Employee ID Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.salary.employeeIdColumn}
+                    onChange={(e) => handleInputChange('salary', 'employeeIdColumn', e.target.value.toUpperCase())}
+                    placeholder="C"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Employee ID</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gross Salary Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.salary.grossSalaryColumn}
+                    onChange={(e) => handleInputChange('salary', 'grossSalaryColumn', e.target.value.toUpperCase())}
+                    placeholder="D"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Gross Salary</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    PF Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.salary.pfColumn}
+                    onChange={(e) => handleInputChange('salary', 'pfColumn', e.target.value.toUpperCase())}
+                    placeholder="E"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">PF Deduction</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ESI Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.salary.esiColumn}
+                    onChange={(e) => handleInputChange('salary', 'esiColumn', e.target.value.toUpperCase())}
+                    placeholder="F"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">ESI Deduction</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Net Pay Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.salary.netPayColumn}
+                    onChange={(e) => handleInputChange('salary', 'netPayColumn', e.target.value.toUpperCase())}
+                    placeholder="G"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Net Pay</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Days Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.salary.daysColumn}
+                    onChange={(e) => handleInputChange('salary', 'daysColumn', e.target.value.toUpperCase())}
+                    placeholder="H"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Days Worked</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        
-        <div className="flex gap-3">
+
+        {/* Template Names Section */}
+        <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-purple-600" />
+              SMS Template Configuration
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Configure SMS template names for different message types
+            </p>
+          </div>
+
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Attendance Template Name
+                </label>
+                <input
+                  type="text"
+                  value={settings.templateNames.attendanceTempletName}
+                  onChange={(e) => handleInputChange('templateNames', 'attendanceTempletName', e.target.value)}
+                  placeholder="attedence"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Template name for attendance SMS</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Salary Template Name
+                </label>
+                <input
+                  type="text"
+                  value={settings.templateNames.salaryTempletName}
+                  onChange={(e) => handleInputChange('templateNames', 'salaryTempletName', e.target.value)}
+                  placeholder="salary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Template name for salary SMS (Enhanced with Hindi months)</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* System Reset Section - Super Admin Only */}
+        {isSuperAdmin && (
+          <div className="mt-8 bg-white rounded-lg shadow-sm border border-red-200">
+            <div className="bg-gradient-to-r from-red-50 to-orange-50 px-6 py-4 border-b border-red-200">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <Database className="h-5 w-5 text-red-600" />
+                System Management
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                View system statistics and manage data cleanup (Super Admin Only)
+              </p>
+            </div>
+
+            <div className="p-6">
+              {/* System Statistics */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-blue-600" />
+                    System Statistics
+                  </h3>
+                  <button
+                    onClick={fetchSystemStats}
+                    disabled={statsLoading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {statsLoading ? 'Loading...' : 'Refresh Stats'}
+                  </button>
+                </div>
+
+                {systemStats ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-blue-600">{systemStats.totalSMSRecords}</div>
+                      <div className="text-sm text-blue-800">Total SMS Records</div>
+                    </div>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-green-600">{systemStats.totalQueueEntries}</div>
+                      <div className="text-sm text-green-800">Queue Entries</div>
+                    </div>
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-orange-600">{systemStats.totalUsers}</div>
+                      <div className="text-sm text-orange-800">System Users</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    {statsLoading ? 'Loading statistics...' : 'Click "Refresh Stats" to view system statistics'}
+                  </div>
+                )}
+              </div>
+
+              {/* System Reset */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2 mb-4">
+                  <Trash2 className="h-5 w-5 text-red-600" />
+                  System Reset
+                </h3>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Reset Type
+                  </label>
+                  <select
+                    value={resetType}
+                    onChange={(e) => setResetType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="sms_data">SMS Data Only (Keep Users & Settings)</option>
+                    <option
+                      value="all_data"
+                      disabled
+                      className="bg-gray-200 text-gray-500 cursor-not-allowed"
+                    >
+                      All Data (Complete System Reset) (RESTRICTED)
+                    </option>
+
+                  </select>
+                </div>
+
+                {!showResetConfirm ? (
+                  <button
+                    onClick={() => setShowResetConfirm(true)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    {resetType === 'sms_data' ? 'Clear SMS Data' : 'Reset All Data'}
+                  </button>
+                ) : (
+                  <div className="border border-red-200 rounded-lg p-4 bg-red-50">
+                    <p className="text-red-800 mb-4">
+                      <strong>⚠️ Warning:</strong> This action will permanently delete {
+                        resetType === 'sms_data'
+                          ? 'all SMS records and queue entries'
+                          : 'ALL system data including users, settings, and SMS records'
+                      }. This cannot be undone.
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleSystemReset}
+                        disabled={resetLoading}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {resetLoading ? 'Resetting...' : 'Confirm Reset'}
+                      </button>
+                      <button
+                        onClick={() => setShowResetConfirm(false)}
+                        disabled={resetLoading}
+                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 disabled:opacity-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="mt-8 flex flex-col sm:flex-row gap-4">
           <button
-            onClick={resetToDefaults}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
-            <RotateCcw className="w-4 h-4" />
+            <Save className="h-5 w-5" />
+            {saving ? 'Saving...' : 'Save Settings'}
+          </button>
+
+          <button
+            onClick={handleReset}
+            disabled={saving}
+            className="flex-1 bg-gray-600 text-white py-3 px-6 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          >
+            <RotateCcw className="h-5 w-5" />
             Reset to Defaults
           </button>
-          <button
-            onClick={saveSettings}
-            disabled={saving}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-          >
-            {saving ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            {saving ? "Saving..." : "Save Settings"}
-          </button>
         </div>
       </div>
-
-      {/* Message Display */}
-      {message.text && (
-        <div className={`p-4 rounded-lg ${
-          message.type === "success" 
-            ? "bg-green-50 text-green-700 border border-green-200" 
-            : message.type === "error"
-            ? "bg-red-50 text-red-700 border border-red-200"
-            : "bg-blue-50 text-blue-700 border border-blue-200"
-        }`}>
-          {message.text}
-        </div>
-      )}
-
-      {/* Attendance Settings */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-green-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Enhanced Attendance Excel Mapping</h2>
-          </div>
-          <p className="text-gray-600 mt-1">Configure which Excel columns contain detailed attendance data</p>
-          
-          {/* Information about new format */}
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="text-sm font-semibold text-blue-800 mb-2">Simplified Enhanced Attendance Format</h3>
-            <div className="text-sm text-blue-700 space-y-1">
-              <p><strong>SMS Template:</strong> "प्रिय {'{'}name-employeeId{'}'} आज आपने {'{'}inTime-outTime{'}'} कार्य किया आपने कुल {'{'}workDuration{'}'}घंटे"</p>
-              <p><strong>Example:</strong> "प्रिय anish-Amc001 आज आपने 09:00-06:00 कार्य किया आपने कुल 08:00-घंटे"</p>
-              <p><strong>Required Columns:</strong> Name (F), Phone (B), Employee ID (D), In Time (I), Out Time (J), Work Duration (M)</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Employee Name Column
-              </label>
-              <input
-                type="text"
-                value={settings.attendance.nameColumn}
-                onChange={(e) => handleInputChange('attendance', 'nameColumn', e.target.value.toUpperCase())}
-                placeholder="F"
-                maxLength="2"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Employee Name (F)</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone Number Column
-              </label>
-              <input
-                type="text"
-                value={settings.attendance.phoneColumn}
-                onChange={(e) => handleInputChange('attendance', 'phoneColumn', e.target.value.toUpperCase())}
-                placeholder="B"
-                maxLength="2"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Phone Number (B)</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Employee ID Column
-              </label>
-              <input
-                type="text"
-                value={settings.attendance.employeeIdColumn}
-                onChange={(e) => handleInputChange('attendance', 'employeeIdColumn', e.target.value.toUpperCase())}
-                placeholder="D"
-                maxLength="2"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Employee ID (D)</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                In Time Column
-              </label>
-              <input
-                type="text"
-                value={settings.attendance.inTimeColumn}
-                onChange={(e) => handleInputChange('attendance', 'inTimeColumn', e.target.value.toUpperCase())}
-                placeholder="I"
-                maxLength="2"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">In Time (I)</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Out Time Column
-              </label>
-              <input
-                type="text"
-                value={settings.attendance.outTimeColumn}
-                onChange={(e) => handleInputChange('attendance', 'outTimeColumn', e.target.value.toUpperCase())}
-                placeholder="J"
-                maxLength="2"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Out Time (J)</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Work Duration Column
-              </label>
-              <input
-                type="text"
-                value={settings.attendance.workDurationColumn}
-                onChange={(e) => handleInputChange('attendance', 'workDurationColumn', e.target.value.toUpperCase())}
-                placeholder="M"
-                maxLength="2"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Work Duration (M)</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Salary Settings */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Salary Excel Mapping</h2>
-          </div>
-          <p className="text-gray-600 mt-1">Configure which Excel columns contain salary data</p>
-        </div>
-        
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Employee Name Column
-              </label>
-              <input
-                type="text"
-                value={settings.salary.nameColumn}
-                onChange={(e) => handleInputChange('salary', 'nameColumn', e.target.value.toUpperCase())}
-                placeholder="A"
-                maxLength="2"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Example: A, B, C...</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone Number Column
-              </label>
-              <input
-                type="text"
-                value={settings.salary.phoneColumn}
-                onChange={(e) => handleInputChange('salary', 'phoneColumn', e.target.value.toUpperCase())}
-                placeholder="B"
-                maxLength="2"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Example: A, B, C...</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Salary Amount Column
-              </label>
-              <input
-                type="text"
-                value={settings.salary.amountColumn}
-                onChange={(e) => handleInputChange('salary', 'amountColumn', e.target.value.toUpperCase())}
-                placeholder="C"
-                maxLength="2"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Salary amount</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-green-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Template Mapping</h2>
-          </div>
-          <p className="text-gray-600 mt-1">Configure which template used to send sms</p>
-        </div>
-        
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Attendance Template Name
-              </label>
-              <input
-                type="text"
-                value={settings?.templateNames?.attendanceTempletName}
-                onChange={(e) => handleInputChange('attendance', 'attendanceTempletName' , e.target.value)}
-                placeholder="Enter the attendance template name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Salary Template Name
-              </label>
-              <input
-                type="text"
-                value={settings?.templateNames?.salaryTempletName}
-                onChange={(e) => handleInputChange('salary', 'salaryTempletName', e.target.value)}
-                placeholder="Enter the salary template name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* System Reset Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-red-600" />
-            <h2 className="text-xl font-semibold text-gray-900">System Data Management</h2>
-          </div>
-          <p className="text-gray-600 mt-1">Manage system data and perform maintenance operations</p>
-        </div>
-        
-        <div className="p-6">
-          {/* System Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-600">SMS Queue Records</p>
-                  <p className="text-2xl font-bold text-blue-900">
-                    {statsLoading ? '...' : systemStats?.smsQueue?.count || 0}
-                  </p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    {systemStats?.smsQueue?.oldest ? `Since: ${formatDate(systemStats.smsQueue.oldest)}` : 'No data'}
-                  </p>
-                </div>
-                <BarChart3 className="h-8 w-8 text-blue-600" />
-              </div>
-            </div>
-
-            <div className="bg-red-50 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-red-600">Failed SMS Records</p>
-                  <p className="text-2xl font-bold text-red-900">
-                    {statsLoading ? '...' : systemStats?.failedSMS?.count || 0}
-                  </p>
-                  <p className="text-xs text-red-600 mt-1">
-                    {systemStats?.failedSMS?.oldest ? `Since: ${formatDate(systemStats.failedSMS.oldest)}` : 'No data'}
-                  </p>
-                </div>
-                <AlertTriangle className="h-8 w-8 text-red-600" />
-              </div>
-            </div>
-
-            <div className="bg-purple-50 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-purple-600">Log Files</p>
-                  <p className="text-2xl font-bold text-purple-900">
-                    {statsLoading ? '...' : systemStats?.logs?.filesCount || 0}
-                  </p>
-                  <p className="text-xs text-purple-600 mt-1">
-                    {systemStats?.logs?.sizeFormatted || '0 Bytes'}
-                  </p>
-                </div>
-                <FileSpreadsheet className="h-8 w-8 text-purple-600" />
-              </div>
-            </div>
-          </div>
-
-          {/* Reset Options */}
-          <div className="border-t border-gray-200 pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Reset Options</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div 
-                className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-                  resetType === 'sms_data' 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => setResetType('sms_data')}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  {/* <input 
-                    type="radio" 
-                    checked={resetType === 'sms_data'} 
-                    onChange={() => setResetType('sms_data')}
-                    className="text-blue-600"
-                  /> */}
-                  <h4 className="font-medium text-gray-900">SMS Data Only</h4>
-                </div>
-                <p className="text-sm text-gray-600">Clear SMS queue and failed SMS records only</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Recommended for monthly cleanup
-                </p>
-              </div>
-
-              <div 
-                className={`border-2 rounded-lg p-4 cursor-pointer transition-colors bg-gray-100 ${
-                  resetType === 'logs' 
-                    ? 'border-purple-500 bg-purple-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                // onClick={() => setResetType('logs')}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  {/* <input 
-                    type="radio" 
-                    checked={resetType === 'logs'} 
-                    // onChange={() => setResetType('logs')}
-                    className="text-purple-600"
-                  /> */}
-                  <h4 className="font-medium text-gray-500">Log Files Only [Restricted]</h4>
-                </div>
-                <p className="text-sm text-gray-400">Clear performance and error log files</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Keep SMS data, clear logs only
-                </p>
-              </div>
-
-              <div 
-                className={`border-2 rounded-lg p-4 cursor-pointer transition-colors bg-gray-100 ${
-                  resetType === 'all' 
-                    ? 'border-red-500 bg-red-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                // onClick={() => setResetType('all')}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  {/* <input 
-                    type="radio" 
-                    checked={resetType === 'all'} 
-                    // onChange={() => setResetType('all')}
-                    className="text-red-600"
-                  /> */}
-                  <h4 className="font-medium text-gray-500">Complete Reset [Restricted]</h4>
-                </div>
-                <p className="text-sm text-gray-300">Clear all SMS data and log files</p>
-                <p className="text-xs text-red-300 mt-1">
-                  Use with caution - clears everything
-                </p>
-              </div>
-            </div>
-
-            {/* Reset Button */}
-            <div className="flex items-center justify-between">
-              <button
-                onClick={fetchSystemStats}
-                disabled={statsLoading}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors flex items-center gap-2"
-              >
-                <RotateCcw className={`h-4 w-4 ${statsLoading ? 'animate-spin' : ''}`} />
-                Refresh Stats
-              </button>
-
-              <button
-                onClick={() => setShowResetConfirm(true)}
-                disabled={resetLoading || (systemStats?.total || 0) === 0}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-                Reset System Data
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Reset Confirmation Modal */}
-      {showResetConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center gap-3 mb-4">
-              <AlertTriangle className="h-6 w-6 text-red-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Confirm System Reset</h3>
-            </div>
-            
-            <div className="mb-6">
-              <p className="text-gray-600 mb-4">
-                You are about to permanently delete:
-              </p>
-              
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
-                {resetType === 'sms_data' || resetType === 'all' ? (
-                  <>
-                    <div className="flex justify-between">
-                      <span>SMS Queue Records:</span>
-                      <span className="font-medium">{systemStats?.smsQueue?.count || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Failed SMS Records:</span>
-                      <span className="font-medium">{systemStats?.failedSMS?.count || 0}</span>
-                    </div>
-                  </>
-                ) : null}
-                
-                {resetType === 'logs' || resetType === 'all' ? (
-                  <div className="flex justify-between">
-                    <span>Log Files:</span>
-                    <span className="font-medium">
-                      {systemStats?.logs?.filesCount || 0} files ({systemStats?.logs?.sizeFormatted || '0 Bytes'})
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-              
-              <p className="text-red-600 text-sm mt-4 font-medium">
-                ⚠️ This action cannot be undone!
-              </p>
-            </div>
-            
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowResetConfirm(false)}
-                disabled={resetLoading}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={performSystemReset}
-                disabled={resetLoading}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
-              >
-                {resetLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Resetting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="h-4 w-4" />
-                    Confirm Reset
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

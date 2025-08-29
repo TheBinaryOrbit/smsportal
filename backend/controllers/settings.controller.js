@@ -11,21 +11,25 @@ const readSettingsFile = () => {
       const defaultSettings = `# General Settings Configuration
 # Excel Column Mappings for Data Processing
 
-# Simplified Attendance Settings
-ATTENDANCE_NAME_COLUMN=F
-ATTENDANCE_PHONE_COLUMN=B
-ATTENDANCE_EMPLOYEE_ID_COLUMN=D
-ATTENDANCE_IN_TIME_COLUMN=I
-ATTENDANCE_OUT_TIME_COLUMN=J
-ATTENDANCE_WORK_DURATION_COLUMN=M
+# Simplified Attendance Settings (work duration calculated automatically)
+ATTENDANCE_NAME_COLUMN=E
+ATTENDANCE_PHONE_COLUMN=L
+ATTENDANCE_EMPLOYEE_ID_COLUMN=C
+ATTENDANCE_IN_TIME_COLUMN=G
+ATTENDANCE_OUT_TIME_COLUMN=H
 
-# Salary Settings
+# Enhanced Salary Settings (with month selection and detailed breakdown)
 SALARY_NAME_COLUMN=A
 SALARY_PHONE_COLUMN=B
-SALARY_AMOUNT_COLUMN=C
+SALARY_EMPLOYEE_ID_COLUMN=C
+SALARY_GROSS_SALARY_COLUMN=D
+SALARY_PF_COLUMN=E
+SALARY_ESI_COLUMN=F
+SALARY_NETPAY_COLUMN=G
+SALARY_DAYS_COLUMN=H
 
-# Template Name 
-ATTENDANCE_TEMPLET_NAME=attedence
+# Template Names
+ATTENDANCE_TEMPLET_NAME=employeeatt
 SALARY_TEMPLET_NAME=salary
 `;
       
@@ -58,20 +62,24 @@ const writeSettingsFile = (settings) => {
     let content = `# General Settings Configuration
 # Excel Column Mappings for Data Processing
 
-# Simplified Attendance Settings
+# Simplified Attendance Settings (5 columns - work duration calculated automatically)
 ATTENDANCE_NAME_COLUMN=${settings.ATTENDANCE_NAME_COLUMN || 'F'}
 ATTENDANCE_PHONE_COLUMN=${settings.ATTENDANCE_PHONE_COLUMN || 'B'}
 ATTENDANCE_EMPLOYEE_ID_COLUMN=${settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'D'}
 ATTENDANCE_IN_TIME_COLUMN=${settings.ATTENDANCE_IN_TIME_COLUMN || 'I'}
 ATTENDANCE_OUT_TIME_COLUMN=${settings.ATTENDANCE_OUT_TIME_COLUMN || 'J'}
-ATTENDANCE_WORK_DURATION_COLUMN=${settings.ATTENDANCE_WORK_DURATION_COLUMN || 'M'}
 
-# Salary Settings
+# Enhanced Salary Settings (7 columns with month selection and detailed breakdown)
 SALARY_NAME_COLUMN=${settings.SALARY_NAME_COLUMN || 'A'}
 SALARY_PHONE_COLUMN=${settings.SALARY_PHONE_COLUMN || 'B'}
-SALARY_AMOUNT_COLUMN=${settings.SALARY_AMOUNT_COLUMN || 'C'}
+SALARY_EMPLOYEE_ID_COLUMN=${settings.SALARY_EMPLOYEE_ID_COLUMN || 'C'}
+SALARY_GROSS_SALARY_COLUMN=${settings.SALARY_GROSS_SALARY_COLUMN || 'D'}
+SALARY_PF_COLUMN=${settings.SALARY_PF_COLUMN || 'E'}
+SALARY_ESI_COLUMN=${settings.SALARY_ESI_COLUMN || 'F'}
+SALARY_NETPAY_COLUMN=${settings.SALARY_NETPAY_COLUMN || 'G'}
+SALARY_DAYS_COLUMN=${settings.SALARY_DAYS_COLUMN || 'H'}
 
-# Template Name 
+# Template Names
 ATTENDANCE_TEMPLET_NAME=${settings.ATTENDANCE_TEMPLET_NAME || 'attedence'}
 SALARY_TEMPLET_NAME=${settings.SALARY_TEMPLET_NAME || 'salary'}
 
@@ -93,17 +101,21 @@ const getSettings = async (req, res) => {
     // Organize settings by category
     const organizedSettings = {
       attendance: {
-        nameColumn: settings.ATTENDANCE_NAME_COLUMN || 'F',
-        phoneColumn: settings.ATTENDANCE_PHONE_COLUMN || 'B',
-        employeeIdColumn: settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'D',
-        inTimeColumn: settings.ATTENDANCE_IN_TIME_COLUMN || 'I',
-        outTimeColumn: settings.ATTENDANCE_OUT_TIME_COLUMN || 'J',
-        workDurationColumn: settings.ATTENDANCE_WORK_DURATION_COLUMN || 'M'
+        nameColumn: settings.ATTENDANCE_NAME_COLUMN || 'E',
+        phoneColumn: settings.ATTENDANCE_PHONE_COLUMN || 'L',
+        employeeIdColumn: settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'C',
+        inTimeColumn: settings.ATTENDANCE_IN_TIME_COLUMN || 'G',
+        outTimeColumn: settings.ATTENDANCE_OUT_TIME_COLUMN || 'H'
       },
       salary: {
         nameColumn: settings.SALARY_NAME_COLUMN || 'A',
         phoneColumn: settings.SALARY_PHONE_COLUMN || 'B',
-        amountColumn: settings.SALARY_AMOUNT_COLUMN || 'C'
+        employeeIdColumn: settings.SALARY_EMPLOYEE_ID_COLUMN || 'C',
+        grossSalaryColumn: settings.SALARY_GROSS_SALARY_COLUMN || 'D',
+        pfColumn: settings.SALARY_PF_COLUMN || 'E',
+        esiColumn: settings.SALARY_ESI_COLUMN || 'F',
+        netPayColumn: settings.SALARY_NETPAY_COLUMN || 'G',
+        daysColumn: settings.SALARY_DAYS_COLUMN || 'H'
       },
       templateNames: {
         attendanceTempletName: settings.ATTENDANCE_TEMPLET_NAME || 'attedence',
@@ -149,13 +161,17 @@ const updateSettings = async (req, res) => {
       if (attendance.employeeIdColumn) updatedSettings.ATTENDANCE_EMPLOYEE_ID_COLUMN = attendance.employeeIdColumn;
       if (attendance.inTimeColumn) updatedSettings.ATTENDANCE_IN_TIME_COLUMN = attendance.inTimeColumn;
       if (attendance.outTimeColumn) updatedSettings.ATTENDANCE_OUT_TIME_COLUMN = attendance.outTimeColumn;
-      if (attendance.workDurationColumn) updatedSettings.ATTENDANCE_WORK_DURATION_COLUMN = attendance.workDurationColumn;
     }
 
     if (salary) {
       if (salary.nameColumn) updatedSettings.SALARY_NAME_COLUMN = salary.nameColumn;
       if (salary.phoneColumn) updatedSettings.SALARY_PHONE_COLUMN = salary.phoneColumn;
-      if (salary.amountColumn) updatedSettings.SALARY_AMOUNT_COLUMN = salary.amountColumn;
+      if (salary.employeeIdColumn) updatedSettings.SALARY_EMPLOYEE_ID_COLUMN = salary.employeeIdColumn;
+      if (salary.grossSalaryColumn) updatedSettings.SALARY_GROSS_SALARY_COLUMN = salary.grossSalaryColumn;
+      if (salary.pfColumn) updatedSettings.SALARY_PF_COLUMN = salary.pfColumn;
+      if (salary.esiColumn) updatedSettings.SALARY_ESI_COLUMN = salary.esiColumn;
+      if (salary.netPayColumn) updatedSettings.SALARY_NETPAY_COLUMN = salary.netPayColumn;
+      if (salary.daysColumn) updatedSettings.SALARY_DAYS_COLUMN = salary.daysColumn;
     }
 
     if (templateNames.attendanceTempletName) {
@@ -185,13 +201,17 @@ const updateSettings = async (req, res) => {
           phoneColumn: updatedSettings.ATTENDANCE_PHONE_COLUMN,
           employeeIdColumn: updatedSettings.ATTENDANCE_EMPLOYEE_ID_COLUMN,
           inTimeColumn: updatedSettings.ATTENDANCE_IN_TIME_COLUMN,
-          outTimeColumn: updatedSettings.ATTENDANCE_OUT_TIME_COLUMN,
-          workDurationColumn: updatedSettings.ATTENDANCE_WORK_DURATION_COLUMN
+          outTimeColumn: updatedSettings.ATTENDANCE_OUT_TIME_COLUMN
         },
         salary: {
           nameColumn: updatedSettings.SALARY_NAME_COLUMN,
           phoneColumn: updatedSettings.SALARY_PHONE_COLUMN,
-          amountColumn: updatedSettings.SALARY_AMOUNT_COLUMN
+          employeeIdColumn: updatedSettings.SALARY_EMPLOYEE_ID_COLUMN,
+          grossSalaryColumn: updatedSettings.SALARY_GROSS_SALARY_COLUMN,
+          pfColumn: updatedSettings.SALARY_PF_COLUMN,
+          esiColumn: updatedSettings.SALARY_ESI_COLUMN,
+          netPayColumn: updatedSettings.SALARY_NETPAY_COLUMN,
+          daysColumn: updatedSettings.SALARY_DAYS_COLUMN
         },
         templateNames: {
           attendanceTempletName: updatedSettings.ATTENDANCE_TEMPLET_NAME,
@@ -217,19 +237,17 @@ const getAttendanceMapping = async (req, res) => {
     res.json({
       success: true,
       data: {
-        nameColumn: settings.ATTENDANCE_NAME_COLUMN || 'F',
-        phoneColumn: settings.ATTENDANCE_PHONE_COLUMN || 'B',
-        employeeIdColumn: settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'D',
-        inTimeColumn: settings.ATTENDANCE_IN_TIME_COLUMN || 'I',
-        outTimeColumn: settings.ATTENDANCE_OUT_TIME_COLUMN || 'J',
-        workDurationColumn: settings.ATTENDANCE_WORK_DURATION_COLUMN || 'M',
+        nameColumn: settings.ATTENDANCE_NAME_COLUMN || 'E',
+        phoneColumn: settings.ATTENDANCE_PHONE_COLUMN || 'L',
+        employeeIdColumn: settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'C',
+        inTimeColumn: settings.ATTENDANCE_IN_TIME_COLUMN || 'G',
+        outTimeColumn: settings.ATTENDANCE_OUT_TIME_COLUMN || 'H',
         exampleMapping: {
-          F: 'Employee Name',
-          B: 'Phone Number',
-          D: 'Employee ID',
-          I: 'In Time',
-          J: 'Out Time',
-          M: 'Work Duration'
+          E: 'Employee Name',
+          L: 'Phone Number',
+          C: 'Employee ID',
+          G: 'In Time',
+          H: 'Out Time'
         }
       }
     });
@@ -253,11 +271,21 @@ const getSalaryMapping = async (req, res) => {
       data: {
         nameColumn: settings.SALARY_NAME_COLUMN || 'A',
         phoneColumn: settings.SALARY_PHONE_COLUMN || 'B',
-        amountColumn: settings.SALARY_AMOUNT_COLUMN || 'C',
+        employeeIdColumn: settings.SALARY_EMPLOYEE_ID_COLUMN || 'C',
+        grossSalaryColumn: settings.SALARY_GROSS_SALARY_COLUMN || 'D',
+        pfColumn: settings.SALARY_PF_COLUMN || 'E',
+        esiColumn: settings.SALARY_ESI_COLUMN || 'F',
+        netPayColumn: settings.SALARY_NETPAY_COLUMN || 'G',
+        daysColumn: settings.SALARY_DAYS_COLUMN || 'H',
         exampleMapping: {
           A: 'Employee Name',
           B: 'Phone Number',
-          C: 'Salary Amount'
+          C: 'Employee ID',
+          D: 'Gross Salary',
+          E: 'PF Deduction',
+          F: 'ESI Deduction',
+          G: 'Net Pay',
+          H: 'Days Worked'
         }
       }
     });

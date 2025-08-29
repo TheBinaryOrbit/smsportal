@@ -10,6 +10,23 @@ const SalaryPage = () => {
   const [queueStatus, setQueueStatus] = useState(null)
   const [failedSMS, setFailedSMS] = useState([])
   const [loadingStatus, setLoadingStatus] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1) // Default to current month
+  
+  // Hindi months mapping
+  const hindiMonths = [
+    { value: 1, label: 'जनवरी', name: 'January' },
+    { value: 2, label: 'फ़रवरी', name: 'February' },
+    { value: 3, label: 'मार्च', name: 'March' },
+    { value: 4, label: 'अप्रैल', name: 'April' },
+    { value: 5, label: 'मई', name: 'May' },
+    { value: 6, label: 'जून', name: 'June' },
+    { value: 7, label: 'जुलाई', name: 'July' },
+    { value: 8, label: 'अगस्त', name: 'August' },
+    { value: 9, label: 'सितंबर', name: 'September' },
+    { value: 10, label: 'अक्टूबर', name: 'October' },
+    { value: 11, label: 'नवंबर', name: 'November' },
+    { value: 12, label: 'दिसंबर', name: 'December' }
+  ]
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
@@ -35,6 +52,7 @@ const SalaryPage = () => {
     setUploading(true)
     const formData = new FormData()
     formData.append('excel', file)
+    formData.append('selectedMonth', selectedMonth.toString())
 
     try {
       const response = await fetch(`${API_BASE_URL}/sms/upload/salary`, {
@@ -141,15 +159,39 @@ const SalaryPage = () => {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload Salary File</h2>
         
         <div className="space-y-4">
+          {/* Month Selection */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Month (महीना चुनें)
+            </label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            >
+              {hindiMonths.map((month) => (
+                <option key={month.value} value={month.value}>
+                  {month.label} ({month.name})
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-blue-600 mt-1">
+              This month will be used in salary SMS notifications: "{hindiMonths.find(m => m.value === selectedMonth)?.label}-[Days]-दिन"
+            </p>
+          </div>
+
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
             <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <div className="space-y-2">
               <p className="text-sm text-gray-600">
-                Select Excel file with salary data
+                Select Excel file with enhanced salary data
               </p>
-              <p className="text-xs text-gray-500">
-                Columns: Name (A), Phone (B), Amount (C)
-              </p>
+              {/* <p className="text-xs text-gray-500">
+                Columns: Name (A), Phone (B), Employee ID (C), Gross Salary (D), PF (E), ESI (F), Net Pay (G), Days (H)
+              </p> */}
+              {/* <p className="text-xs text-emerald-600">
+                📱 SMS will include: Name-ID, Selected Month with Days from Excel, Detailed salary breakdown
+              </p> */}
             </div>
             
             <input

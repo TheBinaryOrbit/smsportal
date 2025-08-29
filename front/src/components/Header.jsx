@@ -28,7 +28,7 @@ const Header = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">SMS Portal</h1>
-          <p className="text-sm text-gray-500">Comprehensive business management platform</p>
+          <p className="text-sm text-gray-500">Comprehensive Business Bulk SMS platform</p>
         </div>
 
         <div className="flex items-center space-x-4">

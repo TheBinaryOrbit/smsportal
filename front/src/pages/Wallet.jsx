@@ -75,9 +75,9 @@ const WalletPage = () => {
         <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-blue-500 p-6 hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-600 mb-1">SMS Credits</p>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{walletData.smsCount.toLocaleString()}</p>
-              <p className="text-sm text-gray-500">Messages available</p>
+              <p className="text-sm font-medium text-gray-600 mb-1">Wallet Balance</p>
+              <p className="text-3xl font-bold text-gray-900 mb-1">{(+walletData.balance).toFixed(2)}</p>
+              <p className="text-sm text-gray-500">Wallet Balance available</p>
             </div>
             <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
               <MessageSquare className="w-6 h-6 text-blue-600" />
@@ -89,9 +89,9 @@ const WalletPage = () => {
         <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-purple-500 p-6 hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-600 mb-1">Price per SMS</p>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{walletData.currency} {walletData.pricePerSms.toFixed(2)}</p>
-              <p className="text-sm text-gray-500">Per message cost</p>
+              <p className="text-sm font-medium text-gray-600 mb-1">SMS Count</p>
+              <p className="text-3xl font-bold text-gray-900 mb-1">{walletData.smsCount.toLocaleString()}</p>
+              <p className="text-sm text-gray-500">Total Sms Count available</p>
             </div>
             <div className="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-purple-600" />

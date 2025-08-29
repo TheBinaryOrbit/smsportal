@@ -7,7 +7,9 @@ const {
   deleteAdmin, 
   updatePassword, 
   checkSession,
-  getAllAdmins 
+  getAllAdmins,
+  getSystemStats,
+  resetSystem
 } = require('../controllers/admin.controller');
 
 
@@ -27,5 +29,7 @@ router.put('/update-password', updatePassword);
 router.post('/add', requireSuperAdmin, addAdmin);
 router.delete('/delete/:id', requireSuperAdmin, deleteAdmin);
 router.get('/all', requireSuperAdmin, getAllAdmins);
+router.get('/system-stats', requireSuperAdmin, getSystemStats);
+router.post('/reset-system', requireSuperAdmin, resetSystem);
 
 module.exports = router;
