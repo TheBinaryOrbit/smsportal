@@ -16,13 +16,17 @@ import {
   ShieldX,
   Wallet,
   User,
-  BarChart3
+  BarChart3,
+  Download,
+  Calendar
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 
 const Sidebar = () => {
   const location = useLocation()
-  const [expandedMenus, setExpandedMenus] = useState({})
+  const [expandedMenus, setExpandedMenus] = useState({
+    Attendance: true // Default expand attendance menu
+  })
   const { isSuperAdmin } = useAuth()
 
   const toggleMenu = (menuKey) => {
@@ -46,8 +50,20 @@ const Sidebar = () => {
       key: "Attendance",
       title: "Attendance",
       icon: MessageSquareText,
-      path: "/attendance",
+      hasSubmenu: true,
       isVisible: true,
+      subItems: [
+        {
+          title: "Upload File",
+          icon: Plus,
+          path: "/attendance",
+        },
+        {
+          title: "Export Data",
+          icon: Download,
+          path: "/attendance/export",
+        },
+      ],
     },
     {
       key: "salary",

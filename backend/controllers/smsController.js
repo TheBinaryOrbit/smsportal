@@ -89,77 +89,9 @@ const calculateNetSalary = (grossSalary, pf, esi) => {
   const pfAmount = parseFloat(pf) || 0;
   const esiAmount = parseFloat(esi) || 0;
   const netPay = gross - (pfAmount + esiAmount);
-  return `${gross}-(${pfAmount}+${esiAmount}) = ${netPay.toFixed(2)}`;
+  return `${gross}-${pfAmount}-${esiAmount} = ${netPay.toFixed(2)}`;
 };
 
-// Helper function to format time (extract HH:MM from time strings)
-const formatTime = (timeString) => {
-  if (!timeString) return '';
-  
-  // Extract time in format HH:MM from strings like "07:15:27" or "07:16:27(SE)()"
-  const timeMatch = timeString.toString().match(/(\d{2}):(\d{2})/);
-  if (timeMatch) {
-    return `${timeMatch[1]}:${timeMatch[2]}`;
-  }
-  return timeString.toString().substring(0, 5); // Fallback to first 5 characters
-};
-
-// Helper function to format work duration
-const formatWorkDuration = (durationString) => {
-  if (!durationString) return '';
-  
-  // Extract duration and add "घंटे" if not present
-  const duration = durationString.toString();
-  if (duration.includes('घंटे')) {
-    return duration;
-  }
-  return `${duration}-घंटे`;
-};
-
-// Helper function to calculate work duration from in-time and out-time
-const calculateWorkDuration = (inTimeStr, outTimeStr) => {
-  if (!inTimeStr || !outTimeStr) return '08:00';
-  
-  try {
-    // Parse time strings (assuming format like "09:00", "17:30", "07:15:27", etc.)
-    const parseTime = (timeStr) => {
-      const timeMatch = timeStr.toString().match(/(\d{1,2}):(\d{2})/);
-      if (timeMatch) {
-        return {
-          hours: parseInt(timeMatch[1]),
-          minutes: parseInt(timeMatch[2])
-        };
-      }
-      return { hours: 0, minutes: 0 };
-    };
-    
-    const inTime = parseTime(inTimeStr);
-    const outTime = parseTime(outTimeStr);
-    
-    // Convert to minutes for easier calculation
-    const inTimeMinutes = inTime.hours * 60 + inTime.minutes;
-    let outTimeMinutes = outTime.hours * 60 + outTime.minutes;
-    
-    // Handle next day scenario (if out time is earlier than in time)
-    if (outTimeMinutes < inTimeMinutes) {
-      outTimeMinutes += 24 * 60; // Add 24 hours
-    }
-    
-    // Calculate difference in minutes
-    const diffMinutes = outTimeMinutes - inTimeMinutes;
-    
-    // Convert back to hours and minutes
-    const workHours = Math.floor(diffMinutes / 60);
-    const workMinutes = diffMinutes % 60;
-    
-    // Format as HH:MM
-    return `${workHours.toString().padStart(2, '0')}:${workMinutes.toString().padStart(2, '0')}`;
-    
-  } catch (error) {
-    console.error('Error calculating work duration:', error);
-    return '08:00'; // Default fallback
-  }
-};
 
 // Simple SMS processing without Redis queue
 const processDirectSMS = async (type, data, isRetry = false) => {
@@ -170,20 +102,31 @@ const processDirectSMS = async (type, data, isRetry = false) => {
     let result;
     
     if (type === 'attendance') {
-      console.log(data);
-      // Create the enhanced attendance message format
-      const nameWithId = `${data.name}-${data.employeeId}`;
-      const inTime = formatTime(data.inTime);
-      const outTime = formatTime(data.outTime);
-      const workTime = `${inTime}-${outTime}`;
-      const workDuration = formatWorkDuration(data.workDuration);
+      console.log('Attendance Data:', data);
       
-      const variables = `${nameWithId}|${workTime}|${workDuration}`;
+      // Create the new attendance message format
+      // Format: {name-employeeId}|{date}|{inTime-outTime -कुल-workDuration घंटे}
+      const nameWithId = `${data.name}–${data.employeeId}`;
+      const dateFormatted = data.selectedDate;
+      const inTime = data.inTime;
+      const outTime = data.outTime;
+      let workTimeWithTotal =  `${inTime}–${outTime} -कुल-${data.workDuration}`;
+
+      if(data.inTime == '00:00:00' && data.outTime == '00:00:00') {
+        workTimeWithTotal = `अपनी अनुपस्थिति की-कुल-${data.workDuration}`;
+      }
+      const variables = `${nameWithId}|${dateFormatted}|${workTimeWithTotal}`;
+      
+      console.log('Attendance Variables:', variables);
+      console.log('Variable breakdown:');
+      console.log('- Name with ID:', nameWithId);
+      console.log('- Date:', dateFormatted);
+      console.log('- Work time with total:', workTimeWithTotal);
       
       // Use demo or real API based on configuration
       result = isDemoMode ? 
-        await sendDemoSMS(data.phone, setting.ATTENDANCE_TEMPLET_ID, variables) :
-        await sendSMS(data.phone, setting.ATTENDANCE_TEMPLET_ID, variables);
+        await sendDemoSMS(data.phone, '197597', variables) :
+        await sendSMS(data.phone, '197597', variables);
     } else if (type === 'salary') {
       // Create the enhanced salary message format
       const nameWithId = `${data.name}-${data.employeeId}`;
@@ -194,8 +137,8 @@ const processDirectSMS = async (type, data, isRetry = false) => {
       
       // Use demo or real API based on configuration
       result = isDemoMode ? 
-        await sendDemoSMS(data.phone, setting.SALARY_TEMPLET_ID, variables) :
-        await sendSMS(data.phone, setting.SALARY_TEMPLET_ID, variables);
+        await sendDemoSMS(data.phone, '197376', variables) :
+        await sendSMS(data.phone, '197376', variables);
     }
     
     const processingTime = Date.now() - startTime;
@@ -212,7 +155,8 @@ const processDirectSMS = async (type, data, isRetry = false) => {
               employeeId: data.employeeId,
               inTime: data.inTime,
               outTime: data.outTime,
-              workDuration: data.workDuration
+              workDuration: data.workDuration,
+              selectedDate: data.selectedDate
             } : 
             { 
               employeeId: data.employeeId,
@@ -304,7 +248,8 @@ const processDirectSMS = async (type, data, isRetry = false) => {
             employeeId: data.employeeId,
             inTime: data.inTime,
             outTime: data.outTime,
-            workDuration: data.workDuration
+            workDuration: data.workDuration,
+            selectedDate: data.selectedDate
           } : 
           { 
             employeeId: data.employeeId,
@@ -363,7 +308,7 @@ const processDirectSMS = async (type, data, isRetry = false) => {
 // SMS API function
 const sendSMS = async (phoneNumber, templateId, variables) => {
   try {
-    console.log(phoneNumber , templateId, variables)
+    console.log(phoneNumber , templateId , variables)
     const apiUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${process.env.WALLET_API_URL}&route=dlt&sender_id=SHUSON&message=${templateId}&variables_values=${variables}&flash=0&numbers=${phoneNumber}`;
     
     const response = await axios.get(apiUrl);
@@ -410,7 +355,7 @@ const upload = multer({
     }
   },
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: 100 * 1024 * 1024 // 10MB limit
   }
 });
 
@@ -453,7 +398,24 @@ const readExcelFile = (filePath, columnMapping) => {
   }
 };
 
-// Upload and process attendance Excel
+function parseExcelCell(cellValue) {
+  if (typeof cellValue === "number") {
+    // Treat it as Excel time (fraction of a day)
+    let totalSeconds = Math.round(cellValue * 24 * 60 * 60);
+    let hours = Math.floor(totalSeconds / 3600);
+    let minutes = Math.floor((totalSeconds % 3600) / 60);
+    let seconds = totalSeconds % 60;
+
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  } else if (typeof cellValue === "string") {
+    // If already text, just return as it is
+    return cellValue.trim();
+  } else {
+    return "";
+  }
+}
+
+// Upload and process attendance Excel to be changed
 const uploadAttendanceExcel = async (req, res) => {
   const batchStartTime = Date.now();
   const batchId = `attendance_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -466,7 +428,22 @@ const uploadAttendanceExcel = async (req, res) => {
       });
     }
 
+    // Get selected date from request body
+    const selectedDate = req.body.selectedDate || new Date().toISOString().split('T')[0];
+    
+    // Format date as DD-MM-YYYY
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
+    };
+    
+    const formattedDate = formatDate(selectedDate);
+
     console.log(`Starting attendance batch processing: ${batchId}`);
+    console.log(`Selected date: ${selectedDate} (formatted: ${formattedDate})`);
     console.log(`Demo mode: ${isDemoMode ? 'ENABLED' : 'DISABLED'}`);
     console.log(`Logging: ${enableLogging ? 'ENABLED' : 'DISABLED'}`);
 
@@ -478,7 +455,8 @@ const uploadAttendanceExcel = async (req, res) => {
       phone: settings.ATTENDANCE_PHONE_COLUMN || 'B',
       employeeId: settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'D',
       inTime: settings.ATTENDANCE_IN_TIME_COLUMN || 'I',
-      outTime: settings.ATTENDANCE_OUT_TIME_COLUMN || 'J'
+      outTime: settings.ATTENDANCE_OUT_TIME_COLUMN || 'J' ,
+      workDuration : settings.ATTENDANCE_WORK_COLUMN || 'K'
     };
     
     // Read and extract data from Excel
@@ -490,6 +468,9 @@ const uploadAttendanceExcel = async (req, res) => {
         message: 'No valid data found in Excel file'
       });
     }
+
+
+
     
     // Validate and process data
     const processedData = [];
@@ -497,6 +478,7 @@ const uploadAttendanceExcel = async (req, res) => {
     
     for (let i = 0; i < extractedData.length; i++) {
       const row = extractedData[i];
+      console.log('Processing row:', row);
       
       // Validate required fields - Updated for new format
       if (!row.name || !row.phone || !row.employeeId) {
@@ -511,24 +493,27 @@ const uploadAttendanceExcel = async (req, res) => {
         continue;
       }
       
-      // Validate that in-time and out-time are present for work duration calculation
-      if (!row.inTime || !row.outTime) {
-        errors.push(`Row ${i + 2}: Missing in-time or out-time`);
-        continue;
-      }
+      
 
       console.log(row);
       
       // Calculate work duration from in-time and out-time
-      const calculatedWorkDuration = calculateWorkDuration(row.inTime, row.outTime);
-      
+      // const calculatedWorkDuration = calculateWorkDuration(row.inTime, row.outTime);
+
+      console.log('Calculated work duration:', parseExcelCell(row.workDuration));
+      console.log('In time:', parseExcelCell(row.inTime));
+      console.log('Out time:', parseExcelCell(row.outTime));
+
+
+      // return;
       processedData.push({
         name: row.name.toString().trim(),
         phone: row.phone.toString().trim(),
         employeeId: row.employeeId.toString().trim(),
-        inTime: row.inTime.toString().trim(),
-        outTime: row.outTime.toString().trim(),
-        workDuration: calculatedWorkDuration
+        inTime: row.inTime == '00:00:00' ? '00:00:00' : parseExcelCell(row.inTime),
+        outTime: row.outTime == '00:00:00' ? '00:00:00' : parseExcelCell(row.outTime),
+        workDuration: parseExcelCell(row.workDuration),
+        selectedDate: formattedDate
       });
     }
     
@@ -546,7 +531,8 @@ const uploadAttendanceExcel = async (req, res) => {
           employeeId: data.employeeId,
           inTime: data.inTime,
           outTime: data.outTime,
-          workDuration: data.workDuration
+          workDuration: data.workDuration,
+          selectedDate: data.selectedDate
         },
         status: 'pending',
         createdAt: new Date()
@@ -563,7 +549,8 @@ const uploadAttendanceExcel = async (req, res) => {
           employeeId: data.employeeId,
           inTime: data.inTime,
           outTime: data.outTime,
-          workDuration: data.workDuration
+          workDuration: data.workDuration,
+          selectedDate: data.selectedDate
         })
       );
     }
@@ -589,7 +576,8 @@ const uploadAttendanceExcel = async (req, res) => {
         errors: errors,
         batchProcessingTime: batchProcessingTime,
         isDemoMode: isDemoMode,
-        avgProcessingTimePerSMS: batchProcessingTime / processedData.length
+        avgProcessingTimePerSMS: batchProcessingTime / processedData.length,
+        selectedDate: formattedDate
       });
     }
     
@@ -610,7 +598,8 @@ const uploadAttendanceExcel = async (req, res) => {
         queuedForSMS: queueEntries.length,
         errors: errors,
         batchProcessingTime: batchProcessingTime,
-        isDemoMode: isDemoMode
+        isDemoMode: isDemoMode,
+        selectedDate: formattedDate
       }
     });
     
@@ -971,7 +960,8 @@ const retryFailedSMS = async (req, res) => {
           employeeId: failedRecord.data.employeeId,
           inTime: failedRecord.data.inTime,
           outTime: failedRecord.data.outTime,
-          workDuration: failedRecord.data.workDuration
+          workDuration: failedRecord.data.workDuration,
+          selectedDate: failedRecord.data.selectedDate
         } :
         { 
           employeeId: failedRecord.data.employeeId,
@@ -1182,6 +1172,194 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+// Export attendance data to Excel or CSV
+const exportAttendanceData = async (req, res) => {
+  try {
+    const { format = 'excel', date, status, type = 'attendance' } = req.query;
+    
+    // Build filter query
+    const filter = { type };
+    
+    if (date) {
+      // Convert YYYY-MM-DD to DD-MM-YYYY format to match stored format
+      const convertedDate = new Date(date);
+      const day = convertedDate.getDate().toString().padStart(2, '0');
+      const month = (convertedDate.getMonth() + 1).toString().padStart(2, '0');
+      const year = convertedDate.getFullYear();
+      const formattedDate = `${day}-${month}-${year}`;
+      
+      filter['data.selectedDate'] = formattedDate;
+    }
+    
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    // Fetch attendance data
+    const attendanceData = await SMSQueue.find(filter).sort({ createdAt: -1 });
+    
+    if (attendanceData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No attendance data found for the specified criteria'
+      });
+    }
+    
+    // Format data for export
+    const formattedData = attendanceData.map(record => ({
+      Name: record.name,
+      Phone: record.phone,
+      'Employee ID': record.data?.employeeId || 'N/A',
+      Date: record.data?.selectedDate || new Date(record.createdAt).toLocaleDateString('en-GB'),
+      'In Time': record.data?.inTime || 'N/A',
+      'Out Time': record.data?.outTime || 'N/A',
+      'Work Duration': record.data?.workDuration || 'N/A',
+      Status: record.status,
+      'Created At': new Date(record.createdAt).toLocaleString('en-GB'),
+      'Message Template': generateAttendanceMessage(record),
+      Error: record.error || ''
+    }));
+    
+    if (format === 'csv') {
+      // Generate CSV
+      const headers = Object.keys(formattedData[0]);
+      const csvContent = [
+        headers.join(','),
+        ...formattedData.map(row => 
+          headers.map(header => `"${row[header]}"`).join(',')
+        )
+      ].join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="attendance_data_${Date.now()}.csv"`);
+      return res.send(csvContent);
+    } else {
+      // Generate Excel
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(formattedData);
+      
+      // Set column widths
+      const columnWidths = [
+        { wch: 20 }, // Name
+        { wch: 15 }, // Phone
+        { wch: 15 }, // Employee ID
+        { wch: 12 }, // Date
+        { wch: 10 }, // In Time
+        { wch: 10 }, // Out Time
+        { wch: 15 }, // Work Duration
+        { wch: 10 }, // Status
+        { wch: 20 }, // Created At
+        { wch: 50 }, // Message Template
+        { wch: 30 }  // Error
+      ];
+      worksheet['!cols'] = columnWidths;
+      
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance Data');
+      
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="attendance_data_${Date.now()}.xlsx"`);
+      return res.send(buffer);
+    }
+    
+  } catch (error) {
+    console.error('Export error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export attendance data',
+      error: error.message
+    });
+  }
+};
+
+// Helper function to generate attendance message template
+const generateAttendanceMessage = (record) => {
+  const { name, data } = record;
+  const employeeId = data?.employeeId || 'N/A';
+  const selectedDate = data?.selectedDate || new Date(record.createdAt).toLocaleDateString('en-GB');
+  const workDuration = data?.workDuration || 'N/A';
+  const inTime = data?.inTime || 'N/A';
+  const outTime = data?.outTime || 'N/A';
+  
+  // Format the time string as: inTime–outTime -कुल-workDuration
+  const timeDetails = `${inTime}–${outTime} -कुल-${workDuration}`;
+  
+  return `प्रिय ${name}–${employeeId}\n\nआज ${selectedDate} को आपने ${timeDetails} घंटे तक कार्य किया।\n\nधन्यवाद,\nसुख्मा सन्स`;
+};
+
+// Get attendance data for export preview
+const getAttendanceData = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, date, status, type = 'attendance' } = req.query;
+    
+    // Build filter query
+    const filter = { type };
+    
+    if (date) {
+      // Convert YYYY-MM-DD to DD-MM-YYYY format to match stored format
+      const convertedDate = new Date(date);
+      const day = convertedDate.getDate().toString().padStart(2, '0');
+      const month = (convertedDate.getMonth() + 1).toString().padStart(2, '0');
+      const year = convertedDate.getFullYear();
+      const formattedDate = `${day}-${month}-${year}`;
+      
+      // Filter by the selectedDate field in the data object
+      filter['data.selectedDate'] = formattedDate;
+    }
+    
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Get total count
+    const total = await SMSQueue.countDocuments(filter);
+    
+    // Get paginated data
+    const attendanceData = await SMSQueue.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    // Format data
+    const formattedData = attendanceData.map(record => ({
+      _id: record._id,
+      name: record.name,
+      phone: record.phone,
+      employeeId: record.data?.employeeId || 'N/A',
+      selectedDate: record.data?.selectedDate || new Date(record.createdAt).toLocaleDateString('en-GB'),
+      inTime: record.data?.inTime || 'N/A',
+      outTime: record.data?.outTime || 'N/A',
+      workDuration: record.data?.workDuration || 'N/A',
+      status: record.status,
+      createdAt: record.createdAt,
+      error: record.error || '',
+      messageTemplate: generateAttendanceMessage(record)
+    }));
+    
+    res.json({
+      success: true,
+      data: {
+        records: formattedData,
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit))
+      }
+    });
+    
+  } catch (error) {
+    console.error('Get attendance data error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch attendance data',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   upload,
   uploadAttendanceExcel,
@@ -1191,5 +1369,7 @@ module.exports = {
   retryFailedSMS,
   getDailySummary,
   resetSystemData,
-  getSystemStats
+  getSystemStats,
+  exportAttendanceData,
+  getAttendanceData
 };

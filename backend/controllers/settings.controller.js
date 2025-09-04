@@ -17,6 +17,7 @@ ATTENDANCE_PHONE_COLUMN=L
 ATTENDANCE_EMPLOYEE_ID_COLUMN=C
 ATTENDANCE_IN_TIME_COLUMN=G
 ATTENDANCE_OUT_TIME_COLUMN=H
+ATTENDANCE_WORK_COLUMN=K
 
 # Enhanced Salary Settings (with month selection and detailed breakdown)
 SALARY_NAME_COLUMN=A
@@ -63,11 +64,12 @@ const writeSettingsFile = (settings) => {
 # Excel Column Mappings for Data Processing
 
 # Simplified Attendance Settings (5 columns - work duration calculated automatically)
-ATTENDANCE_NAME_COLUMN=${settings.ATTENDANCE_NAME_COLUMN || 'F'}
-ATTENDANCE_PHONE_COLUMN=${settings.ATTENDANCE_PHONE_COLUMN || 'B'}
-ATTENDANCE_EMPLOYEE_ID_COLUMN=${settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'D'}
-ATTENDANCE_IN_TIME_COLUMN=${settings.ATTENDANCE_IN_TIME_COLUMN || 'I'}
-ATTENDANCE_OUT_TIME_COLUMN=${settings.ATTENDANCE_OUT_TIME_COLUMN || 'J'}
+ATTENDANCE_NAME_COLUMN=${settings.ATTENDANCE_NAME_COLUMN || 'E'}
+ATTENDANCE_PHONE_COLUMN=${settings.ATTENDANCE_PHONE_COLUMN || 'L'}
+ATTENDANCE_EMPLOYEE_ID_COLUMN=${settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'C'}
+ATTENDANCE_IN_TIME_COLUMN=${settings.ATTENDANCE_IN_TIME_COLUMN || 'G'}
+ATTENDANCE_OUT_TIME_COLUMN=${settings.ATTENDANCE_OUT_TIME_COLUMN || 'H'}
+ATTENDANCE_WORK_COLUMN=${settings.ATTENDANCE_WORK_COLUMN || 'K'}
 
 # Enhanced Salary Settings (7 columns with month selection and detailed breakdown)
 SALARY_NAME_COLUMN=${settings.SALARY_NAME_COLUMN || 'A'}
@@ -105,7 +107,8 @@ const getSettings = async (req, res) => {
         phoneColumn: settings.ATTENDANCE_PHONE_COLUMN || 'L',
         employeeIdColumn: settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'C',
         inTimeColumn: settings.ATTENDANCE_IN_TIME_COLUMN || 'G',
-        outTimeColumn: settings.ATTENDANCE_OUT_TIME_COLUMN || 'H'
+        outTimeColumn: settings.ATTENDANCE_OUT_TIME_COLUMN || 'H',
+        workColumn: settings.ATTENDANCE_WORK_COLUMN || 'K'
       },
       salary: {
         nameColumn: settings.SALARY_NAME_COLUMN || 'A',
@@ -161,6 +164,7 @@ const updateSettings = async (req, res) => {
       if (attendance.employeeIdColumn) updatedSettings.ATTENDANCE_EMPLOYEE_ID_COLUMN = attendance.employeeIdColumn;
       if (attendance.inTimeColumn) updatedSettings.ATTENDANCE_IN_TIME_COLUMN = attendance.inTimeColumn;
       if (attendance.outTimeColumn) updatedSettings.ATTENDANCE_OUT_TIME_COLUMN = attendance.outTimeColumn;
+      if (attendance.workColumn) updatedSettings.ATTENDANCE_WORK_COLUMN = attendance.workColumn;
     }
 
     if (salary) {

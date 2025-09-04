@@ -1,0 +1,10 @@
+{
+  "date": "2025-09-04",
+  "totalOperations": 0,
+  "successfulSMS": 0,
+  "failedSMS": 0,
+  "avgProcessingTime": 0,
+  "batchSummary": [],
+  "errors": [],
+  "performanceMetrics": []
+}

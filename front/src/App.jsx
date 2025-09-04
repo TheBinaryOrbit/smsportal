@@ -7,6 +7,7 @@ import CreateAdmin from "./pages/CreateAdmin"
 import Wallet from "./pages/Wallet"
 import Settings from "./pages/Settings"
 import Attendance from "./pages/Attendance"
+import AttendanceExport from "./pages/AttendanceExport"
 import Salary from "./pages/Salary"
 import FailsSms from "./pages/FailsSms"
 import PerformancePage from "./pages/PerformancePage"
@@ -60,6 +61,17 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Attendance />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/attendance/export"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <AttendanceExport />
               </Layout>
             </ProtectedRoute>
           }

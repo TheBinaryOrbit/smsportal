@@ -9,7 +9,9 @@ const {
   retryFailedSMS,
   getDailySummary,
   resetSystemData,
-  getSystemStats
+  getSystemStats,
+  exportAttendanceData,
+  getAttendanceData
 } = require('../controllers/smsController');
 const { authenticateAdmin, authenticateSuperAdmin } = require('../middleware/auth');
 
@@ -24,6 +26,10 @@ router.post('/upload/salary', upload.single('excel'), uploadSalaryExcel);
 router.get('/queue/status', getQueueStatus);
 router.get('/failed', getFailedSMS);
 router.post('/retry/:id', retryFailedSMS);
+
+// Attendance data routes
+router.get('/attendance/data', getAttendanceData);
+router.get('/attendance/export', exportAttendanceData);
 
 // Performance and logging routes
 router.get('/logs/daily-summary', getDailySummary);

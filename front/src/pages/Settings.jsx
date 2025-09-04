@@ -17,12 +17,12 @@ const SettingsPage = () => {
 
   const [settings, setSettings] = useState({
     attendance: {
-      nameColumn: 'F',
-      phoneColumn: 'B',
-      employeeIdColumn: 'D',
-      inTimeColumn: 'I',
-      outTimeColumn: 'J',
-      workDurationColumn: 'M'
+      nameColumn: 'E',
+      phoneColumn: 'L',
+      employeeIdColumn: 'C',
+      inTimeColumn: 'G',
+      outTimeColumn: 'H',
+      workColumn: 'K'
     },
     salary: {
       nameColumn: 'A',
@@ -123,12 +123,12 @@ const SettingsPage = () => {
   const handleReset = () => {
     setSettings({
       attendance: {
-        nameColumn: 'F',
-        phoneColumn: 'B',
-        employeeIdColumn: 'D',
-        inTimeColumn: 'I',
-        outTimeColumn: 'J',
-        workDurationColumn: 'M'
+        nameColumn: 'E',
+        phoneColumn: 'L',
+        employeeIdColumn: 'C',
+        inTimeColumn: 'G',
+        outTimeColumn: 'H',
+        workColumn: 'K'
       },
       salary: {
         nameColumn: 'A',
@@ -260,22 +260,20 @@ const SettingsPage = () => {
                 Attendance Column Mapping
               </h2>
               <p className="text-sm text-gray-600 mt-1">
-                Configure Excel column mappings for attendance data (Simplified - 5 columns)
+                Configure Excel column mappings for attendance data (Simplified - 6 columns)
               </p>
             </div>
 
             <div className="p-6">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h3 className="font-medium text-blue-900 mb-2">📋 Attendance Structure (5 Columns)</h3>
+                <h3 className="font-medium text-blue-900 mb-2">📋 Attendance Structure (6 Columns)</h3>
                 <div className="text-sm text-blue-800 space-y-1">
                   <div>✅ <strong>Name:</strong> Employee name</div>
                   <div>✅ <strong>Phone:</strong> Phone number</div>
                   <div>✅ <strong>Employee ID:</strong> Unique identifier</div>
                   <div>✅ <strong>In Time:</strong> Clock in time</div>
                   <div>✅ <strong>Out Time:</strong> Clock out time</div>
-                  <div className="mt-2 text-blue-700">
-                    <strong>⚡ Auto-calculated:</strong> Work duration (no column needed)
-                  </div>
+                  <div>✅ <strong>Work Duration:</strong> Total work time (can be auto-calculated or pre-filled)</div>
                 </div>
               </div>
 
@@ -348,11 +346,26 @@ const SettingsPage = () => {
                     type="text"
                     value={settings.attendance.outTimeColumn}
                     onChange={(e) => handleInputChange('attendance', 'outTimeColumn', e.target.value.toUpperCase())}
-                    placeholder="J"
+                    placeholder="H"
                     maxLength="2"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">Out Time</p>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Work Duration Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.attendance.workColumn}
+                    onChange={(e) => handleInputChange('attendance', 'workColumn', e.target.value.toUpperCase())}
+                    placeholder="K"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Work Duration (calculated or pre-filled)</p>
                 </div>
               </div>
             </div>
