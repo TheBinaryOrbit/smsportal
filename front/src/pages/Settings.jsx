@@ -40,7 +40,7 @@ const SettingsPage = () => {
     }
   })
 
-  const API_BASE_URL = "https://api.smsportal.yaytech.in" // Replace with your actual API base URL
+  const API_BASE_URL = "https://api.smsportal.yaytech.in/api" // Replace with your actual API base URL
 
   // Clear message after 3 seconds
   useEffect(() => {
