@@ -112,9 +112,10 @@ const processDirectSMS = async (type, data, isRetry = false) => {
       const outTime = data.outTime;
       let workTimeWithTotal =  `${inTime}–${outTime} -कुल-${data.workDuration}`;
 
-      if(data.inTime == '00:00:00' && data.outTime == '00:00:00') {
-        workTimeWithTotal = `अपनी अनुपस्थिति की-कुल-${data.workDuration}`;
-      }
+      // if(data.inTime == '00:00:00' && data.outTime == '00:00:00') {
+      //   workTimeWithTotal = `अपनी अनुपस्थिति की-कुल-${data.workDuration}`;
+      // }
+      
       const variables = `${nameWithId}|${dateFormatted}|${workTimeWithTotal}`;
       
       console.log('Attendance Variables:', variables);
