@@ -40,9 +40,7 @@ const SettingsPage = () => {
     }
   })
 
-  const API_BASE_URL = import.meta.env.DEV
-    ? 'http://localhost:5000/api'
-    : '/api'
+  const API_BASE_URL = "https://api.smsportal.yaytech.in" // Replace with your actual API base URL
 
   // Clear message after 3 seconds
   useEffect(() => {
