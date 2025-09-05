@@ -25,7 +25,8 @@ import { useAuth } from "@/contexts/AuthContext"
 const Sidebar = () => {
   const location = useLocation()
   const [expandedMenus, setExpandedMenus] = useState({
-    Attendance: true // Default expand attendance menu
+    Attendance: true, // Default expand attendance menu
+    salary: true // Default expand salary menu
   })
   const { isSuperAdmin } = useAuth()
 
@@ -69,8 +70,20 @@ const Sidebar = () => {
       key: "salary",
       title: "Salary",
       icon: MessageSquare,
-      path: "/salary",
+      hasSubmenu: true,
       isVisible: true,
+      subItems: [
+        {
+          title: "Upload File",
+          icon: Plus,
+          path: "/salary",
+        },
+        {
+          title: "Export Data",
+          icon: Download,
+          path: "/salary/export",
+        },
+      ],
     },
     {
       key: "failedSms",

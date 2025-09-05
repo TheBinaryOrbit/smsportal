@@ -9,6 +9,7 @@ import Settings from "./pages/Settings"
 import Attendance from "./pages/Attendance"
 import AttendanceExport from "./pages/AttendanceExport"
 import Salary from "./pages/Salary"
+import SalaryExport from "./pages/SalaryExport"
 import FailsSms from "./pages/FailsSms"
 import PerformancePage from "./pages/PerformancePage"
 import { AuthProvider } from "./contexts/AuthContext"
@@ -83,6 +84,17 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Salary />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/salary/export"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <SalaryExport />
               </Layout>
             </ProtectedRoute>
           }

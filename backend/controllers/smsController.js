@@ -1288,6 +1288,27 @@ const generateAttendanceMessage = (record) => {
   return `प्रिय ${name}–${employeeId}\n\nआज ${selectedDate} को आपने ${timeDetails} घंटे तक कार्य किया।\n\nधन्यवाद,\nसुख्मा सन्स`;
 };
 
+// Helper function to generate salary message template
+const generateSalaryMessage = (record) => {
+  const { name, data } = record;
+  const employeeId = data?.employeeId || 'N/A';
+  const grossSalary = data?.grossSalary || 'N/A';
+  const pf = data?.pf || '0';
+  const esi = data?.esi || '0';
+  const netPay = data?.netPay || 'N/A';
+  const selectedMonth = data?.selectedMonth || new Date().getMonth() + 1;
+  const days = data?.days || '31';
+  
+  // Get Hindi month name with days
+  const monthDays = getHindiMonth(selectedMonth, days);
+  
+  // Format salary calculation: Gross-PF-ESI = NetPay
+  const totalDeductions = (parseFloat(pf) + parseFloat(esi)).toFixed(2);
+  const salaryCalculation = `${grossSalary}-${totalDeductions} = ${netPay}`;
+  
+  return `प्रिय कर्मचारी ${name}-${employeeId}\n\nआपके ${monthDays} के वेतन का विवरण इस प्रकार है\n\nGross Salary-EPF & ESI Deduction = NETPAY:\n${salaryCalculation} INR\n\nयह भुगतान सुख्मा सन्स द्वारा आपके खाते में भेज दिया गया है।\n\n-Sukhmaa Sons`;
+};
+
 // Get attendance data for export preview
 const getAttendanceData = async (req, res) => {
   try {
@@ -1360,6 +1381,197 @@ const getAttendanceData = async (req, res) => {
   }
 };
 
+// Export salary data to Excel or CSV
+const exportSalaryData = async (req, res) => {
+  try {
+    const { format = 'excel', date, status, month, type = 'salary' } = req.query;
+    
+    // Build filter query
+    const filter = { type };
+    
+    // Filter by month if provided
+    if (month) {
+      filter['data.selectedMonth'] = parseInt(month);
+    }
+    
+    // Filter by date if provided (creation date)
+    if (date) {
+      const startDate = new Date(date);
+      const endDate = new Date(date);
+      endDate.setDate(endDate.getDate() + 1);
+      
+      filter.createdAt = {
+        $gte: startDate,
+        $lt: endDate
+      };
+    }
+    
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    // Fetch salary data
+    const salaryData = await SMSQueue.find(filter).sort({ createdAt: -1 });
+    
+    if (salaryData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No salary data found for the specified criteria'
+      });
+    }
+    
+    // Format data for export
+    const formattedData = salaryData.map(record => ({
+      Name: record.name,
+      Phone: record.phone,
+      'Employee ID': record.data?.employeeId || 'N/A',
+      'Gross Salary': record.data?.grossSalary || 'N/A',
+      'PF Deduction': record.data?.pf || 'N/A',
+      'ESI Deduction': record.data?.esi || 'N/A',
+      'Net Pay': record.data?.netPay || 'N/A',
+      'Days Worked': record.data?.days || 'N/A',
+      'Salary Month': getHindiMonth(record.data?.selectedMonth, record.data?.days),
+      Status: record.status,
+      'Created At': new Date(record.createdAt).toLocaleString('en-GB'),
+      'Message Template': generateSalaryMessage(record),
+      Error: record.error || ''
+    }));
+    
+    if (format === 'csv') {
+      // Generate CSV
+      const headers = Object.keys(formattedData[0]);
+      const csvContent = [
+        headers.join(','),
+        ...formattedData.map(row => 
+          headers.map(header => `"${row[header]}"`).join(',')
+        )
+      ].join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="salary_data_${Date.now()}.csv"`);
+      return res.send(csvContent);
+    } else {
+      // Generate Excel
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(formattedData);
+      
+      // Set column widths
+      const columnWidths = [
+        { wch: 20 }, // Name
+        { wch: 15 }, // Phone
+        { wch: 15 }, // Employee ID
+        { wch: 15 }, // Gross Salary
+        { wch: 15 }, // PF Deduction
+        { wch: 15 }, // ESI Deduction
+        { wch: 15 }, // Net Pay
+        { wch: 12 }, // Days Worked
+        { wch: 20 }, // Salary Month
+        { wch: 10 }, // Status
+        { wch: 20 }, // Created At
+        { wch: 60 }, // Message Template
+        { wch: 30 }  // Error
+      ];
+      worksheet['!cols'] = columnWidths;
+      
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Salary Data');
+      
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="salary_data_${Date.now()}.xlsx"`);
+      return res.send(buffer);
+    }
+    
+  } catch (error) {
+    console.error('Export salary error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export salary data',
+      error: error.message
+    });
+  }
+};
+
+// Get salary data for export preview
+const getSalaryData = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, date, status, month, type = 'salary' } = req.query;
+    
+    // Build filter query
+    const filter = { type };
+    
+    // Filter by month if provided
+    if (month) {
+      filter['data.selectedMonth'] = parseInt(month);
+    }
+    
+    // Filter by date if provided (creation date)
+    if (date) {
+      const startDate = new Date(date);
+      const endDate = new Date(date);
+      endDate.setDate(endDate.getDate() + 1);
+      
+      filter.createdAt = {
+        $gte: startDate,
+        $lt: endDate
+      };
+    }
+    
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Get total count
+    const total = await SMSQueue.countDocuments(filter);
+    
+    // Get paginated data
+    const salaryData = await SMSQueue.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    // Format data
+    const formattedData = salaryData.map(record => ({
+      _id: record._id,
+      name: record.name,
+      phone: record.phone,
+      employeeId: record.data?.employeeId || 'N/A',
+      grossSalary: record.data?.grossSalary || 'N/A',
+      pf: record.data?.pf || 'N/A',
+      esi: record.data?.esi || 'N/A',
+      netPay: record.data?.netPay || 'N/A',
+      days: record.data?.days || 'N/A',
+      selectedMonth: record.data?.selectedMonth || new Date().getMonth() + 1,
+      salaryMonth: getHindiMonth(record.data?.selectedMonth, record.data?.days),
+      status: record.status,
+      createdAt: record.createdAt,
+      error: record.error || '',
+      messageTemplate: generateSalaryMessage(record)
+    }));
+    
+    res.json({
+      success: true,
+      data: {
+        records: formattedData,
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit))
+      }
+    });
+    
+  } catch (error) {
+    console.error('Get salary data error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch salary data',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   upload,
   uploadAttendanceExcel,
@@ -1371,5 +1583,7 @@ module.exports = {
   resetSystemData,
   getSystemStats,
   exportAttendanceData,
-  getAttendanceData
+  getAttendanceData,
+  exportSalaryData,
+  getSalaryData
 };
