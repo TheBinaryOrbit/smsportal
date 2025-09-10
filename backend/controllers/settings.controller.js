@@ -63,13 +63,14 @@ const writeSettingsFile = (settings) => {
     let content = `# General Settings Configuration
 # Excel Column Mappings for Data Processing
 
-# Simplified Attendance Settings (5 columns - work duration calculated automatically)
+# Simplified Attendance Settings (6 columns - supports both work hours and status formats)
 ATTENDANCE_NAME_COLUMN=${settings.ATTENDANCE_NAME_COLUMN || 'E'}
 ATTENDANCE_PHONE_COLUMN=${settings.ATTENDANCE_PHONE_COLUMN || 'L'}
 ATTENDANCE_EMPLOYEE_ID_COLUMN=${settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'C'}
 ATTENDANCE_IN_TIME_COLUMN=${settings.ATTENDANCE_IN_TIME_COLUMN || 'G'}
 ATTENDANCE_OUT_TIME_COLUMN=${settings.ATTENDANCE_OUT_TIME_COLUMN || 'H'}
 ATTENDANCE_WORK_COLUMN=${settings.ATTENDANCE_WORK_COLUMN || 'K'}
+ATTENDANCE_STATUS_COLUMN=${settings.ATTENDANCE_STATUS_COLUMN || 'M'}
 
 # Enhanced Salary Settings (7 columns with month selection and detailed breakdown)
 SALARY_NAME_COLUMN=${settings.SALARY_NAME_COLUMN || 'A'}
@@ -108,7 +109,8 @@ const getSettings = async (req, res) => {
         employeeIdColumn: settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'C',
         inTimeColumn: settings.ATTENDANCE_IN_TIME_COLUMN || 'G',
         outTimeColumn: settings.ATTENDANCE_OUT_TIME_COLUMN || 'H',
-        workColumn: settings.ATTENDANCE_WORK_COLUMN || 'K'
+        workColumn: settings.ATTENDANCE_WORK_COLUMN || 'K',
+        statusColumn: settings.ATTENDANCE_STATUS_COLUMN || 'M'
       },
       salary: {
         nameColumn: settings.SALARY_NAME_COLUMN || 'A',
@@ -165,6 +167,7 @@ const updateSettings = async (req, res) => {
       if (attendance.inTimeColumn) updatedSettings.ATTENDANCE_IN_TIME_COLUMN = attendance.inTimeColumn;
       if (attendance.outTimeColumn) updatedSettings.ATTENDANCE_OUT_TIME_COLUMN = attendance.outTimeColumn;
       if (attendance.workColumn) updatedSettings.ATTENDANCE_WORK_COLUMN = attendance.workColumn;
+      if (attendance.statusColumn) updatedSettings.ATTENDANCE_STATUS_COLUMN = attendance.statusColumn;
     }
 
     if (salary) {

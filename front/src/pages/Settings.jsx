@@ -22,7 +22,8 @@ const SettingsPage = () => {
       employeeIdColumn: 'C',
       inTimeColumn: 'G',
       outTimeColumn: 'H',
-      workColumn: 'K'
+      workColumn: 'K',
+      statusColumn: 'M'
     },
     salary: {
       nameColumn: 'A',
@@ -40,7 +41,8 @@ const SettingsPage = () => {
     }
   })
 
-  const API_BASE_URL = "https://api.smsportal.yaytech.in/api" // Replace with your actual API base URL
+  const API_BASE_URL = "https://api.smsportal.yaytech.in/api"
+  // const API_BASE_URL = "http://localhost:5000/api"
 
   // Clear message after 3 seconds
   useEffect(() => {
@@ -126,7 +128,8 @@ const SettingsPage = () => {
         employeeIdColumn: 'C',
         inTimeColumn: 'G',
         outTimeColumn: 'H',
-        workColumn: 'K'
+        workColumn: 'K',
+        statusColumn: 'M'
       },
       salary: {
         nameColumn: 'A',
@@ -258,20 +261,21 @@ const SettingsPage = () => {
                 Attendance Column Mapping
               </h2>
               <p className="text-sm text-gray-600 mt-1">
-                Configure Excel column mappings for attendance data (Simplified - 6 columns)
+                Configure Excel column mappings for attendance data (Simplified - 7 columns)
               </p>
             </div>
 
             <div className="p-6">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h3 className="font-medium text-blue-900 mb-2">📋 Attendance Structure (6 Columns)</h3>
+                <h3 className="font-medium text-blue-900 mb-2">📋 Attendance Structure (7 Columns)</h3>
                 <div className="text-sm text-blue-800 space-y-1">
                   <div>✅ <strong>Name:</strong> Employee name</div>
                   <div>✅ <strong>Phone:</strong> Phone number</div>
                   <div>✅ <strong>Employee ID:</strong> Unique identifier</div>
-                  <div>✅ <strong>In Time:</strong> Clock in time</div>
-                  <div>✅ <strong>Out Time:</strong> Clock out time</div>
-                  <div>✅ <strong>Work Duration:</strong> Total work time (can be auto-calculated or pre-filled)</div>
+                  <div>✅ <strong>In Time:</strong> Clock in time (Format 1)</div>
+                  <div>✅ <strong>Out Time:</strong> Clock out time (Format 1)</div>
+                  <div>✅ <strong>Work Duration:</strong> Total work time (Format 1)</div>
+                  <div>✅ <strong>Attendance Status:</strong> Present/Absent status (Format 2)</div>
                 </div>
               </div>
 
@@ -363,7 +367,22 @@ const SettingsPage = () => {
                     maxLength="2"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Work Duration (calculated or pre-filled)</p>
+                  <p className="text-xs text-gray-500 mt-1">Work Duration (for Format 1)</p>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Attendance Status Column
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.attendance.statusColumn}
+                    onChange={(e) => handleInputChange('attendance', 'statusColumn', e.target.value.toUpperCase())}
+                    placeholder="M"
+                    maxLength="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Attendance Status (for Format 2)</p>
                 </div>
               </div>
             </div>

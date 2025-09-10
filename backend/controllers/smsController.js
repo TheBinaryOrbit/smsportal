@@ -104,30 +104,48 @@ const processDirectSMS = async (type, data, isRetry = false) => {
     if (type === 'attendance') {
       console.log('Attendance Data:', data);
       
-      // Create the new attendance message format
-      // Format: {name-employeeId}|{date}|{inTime-outTime -कुल-workDuration घंटे}
       const nameWithId = `${data.name}–${data.employeeId}`;
       const dateFormatted = data.selectedDate;
-      const inTime = data.inTime;
-      const outTime = data.outTime;
-      let workTimeWithTotal =  `${inTime}–${outTime} -कुल-${data.workDuration}`;
+      
+      // Check attendance format type
+      if (data.attendanceFormat === 'format2' || data.attendanceFormat === '197982') {
+        // Format 2: Attendance Status (Present/Absent)
+        const attendanceStatus = data.attendanceStatus || 'उपस्थित';
+        const variables = `${nameWithId}|${dateFormatted}|${attendanceStatus}`;
+        
+        console.log('Attendance Format 2 Variables:', variables);
+        console.log('Variable breakdown:');
+        console.log('- Name with ID:', nameWithId);
+        console.log('- Date:', dateFormatted);
+        console.log('- Attendance Status:', attendanceStatus);
+        
+        // Use template ID 197982 for attendance status
+        result = isDemoMode ? 
+          await sendDemoSMS(data.phone, '197982', variables) :
+          await sendSMS(data.phone, '197982', variables);
+      } else {
+        // Format 1: Work Hours (Default)
+        const inTime = data.inTime;
+        const outTime = data.outTime;
+        let workTimeWithTotal = `${inTime}–${outTime} -कुल-${data.workDuration}`;
 
-      // if(data.inTime == '00:00:00' && data.outTime == '00:00:00') {
-      //   workTimeWithTotal = `अपनी अनुपस्थिति की-कुल-${data.workDuration}`;
-      // }
-      
-      const variables = `${nameWithId}|${dateFormatted}|${workTimeWithTotal}`;
-      
-      console.log('Attendance Variables:', variables);
-      console.log('Variable breakdown:');
-      console.log('- Name with ID:', nameWithId);
-      console.log('- Date:', dateFormatted);
-      console.log('- Work time with total:', workTimeWithTotal);
-      
-      // Use demo or real API based on configuration
-      result = isDemoMode ? 
-        await sendDemoSMS(data.phone, '197597', variables) :
-        await sendSMS(data.phone, '197597', variables);
+        if(data.inTime == '00:00:00' && data.outTime == '00:00:00') {
+          workTimeWithTotal = `अपनी अनुपस्थिति की-कुल-${data.workDuration}`;
+        }
+        
+        const variables = `${nameWithId}|${dateFormatted}|${workTimeWithTotal}`;
+        
+        console.log('Attendance Format 1 Variables:', variables);
+        console.log('Variable breakdown:');
+        console.log('- Name with ID:', nameWithId);
+        console.log('- Date:', dateFormatted);
+        console.log('- Work time with total:', workTimeWithTotal);
+        
+        // Use template ID 197597 for work hours
+        result = isDemoMode ? 
+          await sendDemoSMS(data.phone, '197597', variables) :
+          await sendSMS(data.phone, '197597', variables);
+      }
     } else if (type === 'salary') {
       // Create the enhanced salary message format
       const nameWithId = `${data.name}-${data.employeeId}`;
@@ -429,8 +447,9 @@ const uploadAttendanceExcel = async (req, res) => {
       });
     }
 
-    // Get selected date from request body
+    // Get selected date and attendance format from request body
     const selectedDate = req.body.selectedDate || new Date().toISOString().split('T')[0];
+    const attendanceFormat = req.body.attendanceFormat || 'format1'; // format1 (197597) or format2 (197982)
     
     // Format date as DD-MM-YYYY
     const formatDate = (dateString) => {
@@ -445,19 +464,21 @@ const uploadAttendanceExcel = async (req, res) => {
 
     console.log(`Starting attendance batch processing: ${batchId}`);
     console.log(`Selected date: ${selectedDate} (formatted: ${formattedDate})`);
+    console.log(`Attendance format: ${attendanceFormat}`);
     console.log(`Demo mode: ${isDemoMode ? 'ENABLED' : 'DISABLED'}`);
     console.log(`Logging: ${enableLogging ? 'ENABLED' : 'DISABLED'}`);
 
     const settings = readSettingsFile();
     
-    // Column mapping from settings - Simplified attendance format (work duration calculated)
+    // Column mapping from settings - Attendance format
     const columnMapping = {
-      name: settings.ATTENDANCE_NAME_COLUMN || 'F',
-      phone: settings.ATTENDANCE_PHONE_COLUMN || 'B',
-      employeeId: settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'D',
-      inTime: settings.ATTENDANCE_IN_TIME_COLUMN || 'I',
-      outTime: settings.ATTENDANCE_OUT_TIME_COLUMN || 'J' ,
-      workDuration : settings.ATTENDANCE_WORK_COLUMN || 'K'
+      name: settings.ATTENDANCE_NAME_COLUMN || 'E',
+      phone: settings.ATTENDANCE_PHONE_COLUMN || 'L',
+      employeeId: settings.ATTENDANCE_EMPLOYEE_ID_COLUMN || 'C',
+      inTime: settings.ATTENDANCE_IN_TIME_COLUMN || 'G',
+      outTime: settings.ATTENDANCE_OUT_TIME_COLUMN || 'H',
+      workDuration: settings.ATTENDANCE_WORK_COLUMN || 'K',
+      attendanceStatus: settings.ATTENDANCE_STATUS_COLUMN || 'M' // New column for format 2
     };
     
     // Read and extract data from Excel
@@ -498,24 +519,31 @@ const uploadAttendanceExcel = async (req, res) => {
 
       console.log(row);
       
-      // Calculate work duration from in-time and out-time
-      // const calculatedWorkDuration = calculateWorkDuration(row.inTime, row.outTime);
-
-      console.log('Calculated work duration:', parseExcelCell(row.workDuration));
-      console.log('In time:', parseExcelCell(row.inTime));
-      console.log('Out time:', parseExcelCell(row.outTime));
-
-
-      // return;
-      processedData.push({
+      // Build processed data based on attendance format
+      const processedRow = {
         name: row.name.toString().trim(),
         phone: row.phone.toString().trim(),
         employeeId: row.employeeId.toString().trim(),
-        inTime: row.inTime == '00:00:00' ? '00:00:00' : parseExcelCell(row.inTime),
-        outTime: row.outTime == '00:00:00' ? '00:00:00' : parseExcelCell(row.outTime),
-        workDuration: parseExcelCell(row.workDuration),
-        selectedDate: formattedDate
-      });
+        selectedDate: formattedDate,
+        attendanceFormat: attendanceFormat
+      };
+
+      if (attendanceFormat === 'format2' || attendanceFormat === '197982') {
+        // Format 2: Attendance Status
+        processedRow.attendanceStatus = row.attendanceStatus ? row.attendanceStatus.toString().trim() : 'उपस्थित';
+        console.log('Attendance Status:', processedRow.attendanceStatus);
+      } else {
+        // Format 1: Work Hours (Default)
+        processedRow.inTime = row.inTime == '00:00:00' ? '00:00:00' : parseExcelCell(row.inTime);
+        processedRow.outTime = row.outTime == '00:00:00' ? '00:00:00' : parseExcelCell(row.outTime);
+        processedRow.workDuration = parseExcelCell(row.workDuration);
+        
+        console.log('Calculated work duration:', processedRow.workDuration);
+        console.log('In time:', processedRow.inTime);
+        console.log('Out time:', processedRow.outTime);
+      }
+
+      processedData.push(processedRow);
     }
     
     // Create queue entries and add to SMS queue
@@ -523,18 +551,29 @@ const uploadAttendanceExcel = async (req, res) => {
     const smsProcessingPromises = [];
     
     for (const data of processedData) {
+      // Create queue entry data based on format
+      const queueData = {
+        employeeId: data.employeeId,
+        selectedDate: data.selectedDate,
+        attendanceFormat: data.attendanceFormat
+      };
+
+      if (data.attendanceFormat === 'format2' || data.attendanceFormat === '197982') {
+        // Format 2: Attendance Status
+        queueData.attendanceStatus = data.attendanceStatus;
+      } else {
+        // Format 1: Work Hours
+        queueData.inTime = data.inTime;
+        queueData.outTime = data.outTime;
+        queueData.workDuration = data.workDuration;
+      }
+
       // Create queue entry in database
       const queueEntry = await SMSQueue.create({
         type: 'attendance',
         name: data.name,
         phone: data.phone,
-        data: {
-          employeeId: data.employeeId,
-          inTime: data.inTime,
-          outTime: data.outTime,
-          workDuration: data.workDuration,
-          selectedDate: data.selectedDate
-        },
+        data: queueData,
         status: 'pending',
         createdAt: new Date()
       });
@@ -542,18 +581,25 @@ const uploadAttendanceExcel = async (req, res) => {
       queueEntries.push(queueEntry);
       
       // Process SMS directly (no queue) - don't await, let them run in parallel
-      smsProcessingPromises.push(
-        processDirectSMS('attendance', {
-          queueId: queueEntry._id,
-          name: data.name,
-          phone: data.phone,
-          employeeId: data.employeeId,
-          inTime: data.inTime,
-          outTime: data.outTime,
-          workDuration: data.workDuration,
-          selectedDate: data.selectedDate
-        })
-      );
+      const smsData = {
+        queueId: queueEntry._id,
+        name: data.name,
+        phone: data.phone,
+        employeeId: data.employeeId,
+        selectedDate: data.selectedDate,
+        attendanceFormat: data.attendanceFormat
+      };
+
+      if (data.attendanceFormat === 'format2' || data.attendanceFormat === '197982') {
+        smsData.attendanceStatus = data.attendanceStatus;
+      } else {
+        smsData.inTime = data.inTime;
+        smsData.outTime = data.outTime;
+        smsData.workDuration = data.workDuration;
+      }
+
+      console.log('sms data : ' , smsData)
+      smsProcessingPromises.push(processDirectSMS('attendance', smsData));
     }
     
     // Wait for all SMS processing to complete (for accurate timing)
