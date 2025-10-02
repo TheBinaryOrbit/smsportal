@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { BarChart3, Clock, Activity, AlertCircle, CheckCircle, Settings, RefreshCw } from "lucide-react"
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.smsportal.yaytech.in/api';
 
 const PerformancePage = () => {
   const [summary, setSummary] = useState(null)
